@@ -88,6 +88,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
@@ -184,6 +185,13 @@ fun HomeScreen(
     val reduced = LocalReducedMotion.current
     val density = LocalDensity.current
     val now by rememberNow()
+    // The small Home clock has no date. Prepare its Chinese calendar in the background so the
+    // first Control Center opening does not initialize the calendar library on the UI thread.
+    val today = now.toLocalDate()
+    val prepareLunar = !AerialSettings.largeClock && Locale.getDefault().language == "zh"
+    LaunchedEffect(today, prepareLunar) {
+        if (prepareLunar) withContext(Dispatchers.Default) { lunarDateText(today) }
+    }
     val scope = rememberCoroutineScope()
 
     val requesters = remember { HashMap<String, FocusRequester>() }

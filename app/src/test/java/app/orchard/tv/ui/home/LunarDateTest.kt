@@ -5,6 +5,22 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class LunarDateTest {
+    @Test fun homeAndReopenedPanelShareTheSameDay() {
+        val date = LocalDate.of(2026, 10, 24)
+        val home = lunarDateText(date)
+        repeat(100) {
+            org.junit.Assert.assertSame(home, lunarDateText(date))
+        }
+    }
+
+    @Test fun midnightAndClockCorrectionReplaceTheCachedDay() {
+        val before = LocalDate.of(2026, 10, 23)
+        val after = before.plusDays(1)
+        assertEquals("九月十四 · 霜降", lunarDateText(before))
+        assertEquals("九月十五", lunarDateText(after))
+        assertEquals("九月十四 · 霜降", lunarDateText(before))
+    }
+
     @Test fun ordinaryDate() {
         assertEquals("九月十五", lunarDateText(LocalDate.of(2026, 10, 24)))
     }

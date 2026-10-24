@@ -4,6 +4,10 @@
 
 ## 现状（2026-10-24）
 
+- **控制中心首次打开继续排查（本地，未上电视）**：默认小号时钟主页不显示日期，上一轮缓存直到首次开控制中心才初始化。现在中文、小号时钟主页按当天日期在 `Dispatchers.Default` 提前计算农历，仍共用单日缓存；立即打开时保留同步计算兜底，不显示空日期。Robolectric API 28 native graphics、1080p、空应用列表和默认背景，主页先渲染 30 帧，每组 5 次独立测试：首帧中位数 133.19→117.69ms（原始范围 123.06–138.16ms / 106.41–150.68ms）。这是 debug 软件绘制和 JVM 冷加载数据，不是电视 GPU 耗时，也不能据此认定原真机首帧问题已解决。`ControlCenterRenderTest` 覆盖提前计算、立即打开的日期兜底，以及面板确认键进信号源、返回、关闭重开后的像素一致性；不对时间阈值作易波动断言。控制中心布局、动效、焦点及状态刷新代码未改。实测记录与临时计时夹具保留在本机 `local/artifacts/control-center-response/`。
+
+- **控制中心响应优化（本地，未上电视）**：主页和控制中心共用单日农历结果，面板每次重新挂载不再重复计算；日期格式化按日期、语言及时区复用。玻璃材质将边缘图引用、Matrix、图层 Paint 和纯色滤镜保留在绘制缓存中，减少逐帧分配与全局位图缓存查询。界面、入退场动效、焦点及系统状态刷新逻辑不变。新增同日复用、跨午夜与校时回退回归；真机首帧耗时和遥控器流程尚未验收，不能据此认定已解决此前 160–260ms 的首帧问题。按本次要求不安装电视。
+
 - **1.46（versionCode 49），2026-10-24 发布**（[v1.46](https://github.com/pengchujin/aerial-tv/releases/tag/v1.46)）：手机配置页重做，底部四个标签：壁纸（当前壁纸大图、各组壁纸、添加照片，删照片走底部弹层确认）、屏保（一列单选，选「视频」时下面管理视频）、主屏幕（焦点样式、天气城市、文件夹、App 图标；点图标出底部弹层：换图、信号源起名、恢复默认）、更多（型号、语言、反馈问题）。标签记在地址（`#home`）和手机上，每页各自记住滚动位置；状态没变时 6 秒轮询不重建页面（以前图片会闪），弹层开着时不轮询。新增文件夹改名（`POST api/folder/name`，`id` + `name`，最多 24 字，空名字不改；`api/state` 多了 `folders`；`tile/folder:<id>` 给文件夹磁贴图）：`HomeViewModel` 把重命名挂在 `AppCatalog.renameFolder`。顺手修了「复制」诊断信息时局部变量 `t` 盖住翻译函数、复制后报错。小米 MFTR0（standard release）上用手机页把户主的「系统应用」改成「系统应用 测试」，电视网格里马上变了，已改回；壁纸、屏保页对着真机数据看过。TCL 没装，没在真手机（iOS Safari、微信）里打开过，只在浏览器的手机尺寸下看过深浅色。
 - **1.45（versionCode 48），2026-10-24 发布**（[v1.45](https://github.com/pengchujin/aerial-tv/releases/tag/v1.45)）：创维 Android 11（75A7D，8R134_A7D）`TvInputManager` 为空时，从 `content://com.skyworth.tv.sdk.provider/system/source_list` 读信号源、用 `com.skyworth.tv/.activity.SkyTVMainActivity` 的 `source` Bundle 切换（#444，报告人的补丁，在 75A7D 上验证过），接在回退链最后；`com.skyworth.tv` 算播放信号源的 App，守护不把它当原桌面。我们的小米和 TCL 回归信号源不变。
 - **1.44（versionCode 47），2026-10-24**：可选的「待机时守护退出」（`ConfigReceiver --ez guard_off_in_standby true`，默认关），给待机后唤不醒的 TCL 新固件用（#371 #132），见 `docs/devices/tcl-mt5879-cn.md`。Android 9 模拟器上测过：息屏退出、亮屏加回并拉回原桌面、息屏期间别的入口不会提前加回、关掉选项后不再退出。TCL MT5879 上真待机测过：按待机 0.5 秒内守护移出，遥控器唤醒后加回、前台是 Aerial，测完选项关回去了。
