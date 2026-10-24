@@ -217,4 +217,5 @@
     <string name="ss_videos_hint">Додайте MP4 або MOV зі сторінки на телефоні. Перегляд без мережі; якщо відео недоступні, показуються фото.</string>
     <string name="ss_system">Системна</string>
     <string name="ss_system_hint">Заставка самого телевізора, як задумав виробник (наприклад, картини Xiaomi). Aerial свою не показує.</string>
+    <string name="lunar_calendar_date">Місячний календар: %1$s</string>
 </resources>

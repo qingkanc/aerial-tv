@@ -224,4 +224,5 @@
     <string name="ss_videos_hint">扫码从手机添加 MP4 或 MOV 视频，离线轮播；没有可播放的视频时显示照片。</string>
     <string name="ss_system">系统内置</string>
     <string name="ss_system_hint">用电视自带的屏保（比如小米的那些画面），Aerial 不再显示自己的屏保。</string>
+    <string name="lunar_calendar_date">农历%1$s</string>
 </resources>

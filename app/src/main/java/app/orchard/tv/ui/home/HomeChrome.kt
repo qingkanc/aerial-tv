@@ -157,7 +157,10 @@ fun dateText(now: LocalDateTime): String {
     // Android's SimpleDateFormat (ICU), not java.time: through desugaring, java.time gave the month
     // its stand-alone form, "23 октябрь" in Russian where a date needs "23 октября".
     val millis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    return SimpleDateFormat(pattern, locale).format(Date(millis))
+    val solar = SimpleDateFormat(pattern, locale).format(Date(millis))
+    if (locale.language != "zh") return solar
+    val lunar = remember(now.toLocalDate()) { lunarDateText(now.toLocalDate()) }
+    return "$solar · ${stringResource(R.string.lunar_calendar_date, lunar)}"
 }
 
 /**

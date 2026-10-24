@@ -1,3 +1,5 @@
+> **小米定制分支 `mitv-custom`**：基于正式版 1.46，保留小米默认桌面适配及农历、节气、传统节日。构建、签名和后续升级请先看 [定制版维护说明](docs/MITV-CUSTOM.md)。下面的官网安装命令面向上游原版，不适用于覆盖本定制版。
+
 <div align="center">
 
 <img src="docs/brand/icon.png" width="96" alt="Aerial 图标">

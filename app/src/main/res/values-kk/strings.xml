@@ -217,4 +217,5 @@
     <string name="ss_videos_hint">Телефон бетінен MP4 немесе MOV қосыңыз. Интернетсіз ойнатылады; бейне болмаса, фотолар көрсетіледі.</string>
     <string name="ss_system">Жүйелік</string>
     <string name="ss_system_hint">Теледидардың өз экран сақтағышы (мысалы, Xiaomi суреттері). Aerial өзінікін көрсетпейді.</string>
+    <string name="lunar_calendar_date">Ай күнтізбесі: %1$s</string>
 </resources>
