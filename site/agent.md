@@ -98,9 +98,14 @@ curl -fsSL https://aerial.qust.me/install.sh | KEEP_ADB=1 TV=<IP> bash
    adb shell cmd notification allow_listener app.orchard.tv/app.orchard.tv.guard.RevivalListener
    adb shell appops set app.orchard.tv APP_AUTO_START allow
    adb shell appops set app.orchard.tv APP_ASSOC_START allow
+   ```
+   最后两条 `appops` 只有 TCL 认，别的电视报错是正常的。
+
+   再启动一次 Aerial，等 5 秒后编译（要几十秒，让 Aerial 在电视上更流畅；有的电视要先启动过一次，编译才有效）：
+   ```
+   adb shell am start -W -n app.orchard.tv/.MainActivity
    adb shell cmd package compile -m speed -f app.orchard.tv
    ```
-   最后两条 `appops` 只有 TCL 认，别的电视报错是正常的。`compile` 要几十秒，让 Aerial 在电视上更流畅。
 
 4. 屏保：运行 `adb shell settings get secure screensaver_enabled`。结果是 `1` 时再运行：
    ```

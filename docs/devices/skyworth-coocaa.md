@@ -24,7 +24,7 @@
 
 ## 共同点
 
-- 开机自启基本做不到：桌面是固件按组件或配置文件拉起的，不看 HOME 解析。
+- 开机时桌面是固件按组件或配置文件拉起的，不看 HOME 解析。多数机型开机先出现原桌面，靠守护接管；70A9（7S70_A9，Android 8）用 standard 版、不改 `persist.service.homepage.*`、不 root，`adb reboot` 两次都直接进了 Aerial（#461）。遥控器断电再开时固件会切到上次的信号源，按主页键回 Aerial。
 - logcat 常常看不到第三方 App 的日志，看 `dumpsys activity app.orchard.tv/.MainActivity` 末尾的 DiagLog。
 - `adb install -r` 之后系统会删掉本包的无障碍登记，重装后要先打开一次 Aerial（#316）。
 
@@ -32,3 +32,8 @@
 
 - 9S52_Q4A（Android 6）：开机时固件按组件拉起 `com.tianci.movieplatform/com.ccos.cooui.movieplatform.MainActivity`（intent 带私有类别 `android.intent.category.HOME.CC`），Aerial 约 1.8 秒后接管（#397）。1.43 的 standard 版声明了 `HOME.CC`，是否能让固件开机直接选 Aerial 还没验证。
 - 8R734_Q7H（titanite，Android 13）：和 8R710 一样，Aerial 拿不到窗口焦点，5 秒后 ANR 被杀（#421）。目前没有办法。
+- 70A9（7S70_A9，MStar m7221，Android 8，低内存）：`TvInputManager` 没有输入，信号源走 `com.skyworth.tv.sdk.provider`（查询必须带 projection，`displayName` 是实时的，HDMI 从 0 编号，AV、VOD 是 -1）；遥控器「信号源」键被固件截走，打开原桌面；待机唤醒先经过 `com.tianci.system/...WakeLockActivity` 10–12 秒再到 Aerial（#461）。
+- 7AA46_H5D、8A002_H5D（T963，Android 9）：Aerial 在前台、守护过滤按键时，音量键的抬起到不了守护，1.41–1.46 按一下音量就一直加到 100 或减到 0（#448 #451），1.47 修了。把 Aerial 设为默认桌面（`cmd package set-home-activity`）后守护不过滤按键，音量正常，开机和主页键也正常（#449）。
+- 酷开 aigc 系（C10 投影仪 3H352_C10 Android 9 #487、P60 Android 11、7T863_N6E Android 10 #106）：主页键在 WindowManager 里变成创维热键广播，`com.tianci.system` 的 SLauncher 按组件拉起 `com.coocaa.aigc.home/.home.rootpage.HomeActivity`，不走 HOME 解析；这个桌面不声明任何 Home 类别。1.48 起守护把它算原桌面（未在真机验证）。7T863_N6E 上改 `persist.service.model.pkg/.cls`（加上 `homepage.*`）后主页键进 Aerial，但每次开机被固件写回。
+- 8R145_P3DM（Android 11）：`SkyProcManager` 会强停「不可见的非系统应用」，从 Aerial 打开别的 App 后 Aerial 就被杀，这时按主页键先到酷开桌面，等复活约 20–30 秒才回 Aerial（#106 的日志）。目前没有办法。
+- 创维/酷开 Whaley 55D2UK（helios，MStar，Android 5.0.2，arm64）：standard 版能装能接管，原桌面 `com.helios.guide` priority 1，设不成默认桌面，靠守护（主页键约 4 秒、先闪原桌面）；信号源走微鲸的 `com.whaley.tv.tvplayer.ui/.RootActivity`；亮度 `screen_brightness` 可调（#457）。

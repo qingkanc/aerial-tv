@@ -3,6 +3,7 @@ package app.orchard.tv.ui.home
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
+import android.os.SystemClock
 import android.view.KeyEvent as NativeKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -99,20 +100,28 @@ import kotlin.math.roundToInt
 
 private const val COLUMNS = 5
 
-/** Room under the tiles for every app's name, when all are shown. */
-private val NameRoom = 22.dp
-
 /** The plate's distance from the bottom edge with no second row peeking: as from the sides. */
 private val PlateMarginBottom = 30.dp
 
 /** How much taller the glass plate grows to hold the top row's names, with the second row kept clear of it. */
 private val PlateNameRoom = 28.dp
 
+/** Control Center has been drawn once in this process (HomeScreen's warm-up). */
+private object ControlCenterWarmed { var done = false }
+
+private const val CC_WARM_AFTER_MS = 3_000L
+
+private val GridMargin = 56.dp
+private val GridGap = 28.dp
+
+/** A tile's width at rest on a screen [screenW] wide; TileFaces works out the same size. */
+internal fun restTileWidth(screenW: Dp): Dp = (screenW - GridMargin * 2 - GridGap * (COLUMNS - 1)) / COLUMNS
+
 /** Grid geometry for the screen at hand. On a 1080p TV this is a 960×540 dp canvas. */
-private class GridMetrics(screenW: Dp, screenH: Dp, oneRow: Boolean, val nameRoom: Dp, plateNames: Boolean, peek: Boolean, plate: Boolean) {
-    val margin = 56.dp
-    val gap = 28.dp
-    val tileW = (screenW - margin * 2 - gap * (COLUMNS - 1)) / COLUMNS
+private class GridMetrics(screenW: Dp, screenH: Dp, oneRow: Boolean, plateNames: Boolean, peek: Boolean, plate: Boolean) {
+    val margin = GridMargin
+    val gap = GridGap
+    val tileW = restTileWidth(screenW)
     val tileH = tileW * 9f / 16f
     val pitchX = tileW + gap
     val pitchY = tileH + 50.dp
@@ -126,11 +135,13 @@ private class GridMetrics(screenW: Dp, screenH: Dp, oneRow: Boolean, val nameRoo
     /**
      * The top row sits a little past the middle, under the shelf, as on tvOS. In one-row mode, or
      * when every app fits in it, it sits low, with only the top of any second row showing under
-     * the focused app's name. [nameRoom] is kept under the tiles when every name is shown.
+     * the focused app's name. Every name shown changes nothing here: the names fit in the gap
+     * between the rows, or on the plate, which grows by [firstGap]. Lifting the row for them as
+     * well showed the second row nearly three times as far (issue #540).
      */
     val topRowY = when {
         !oneRow -> screenH * 0.555f
-        peek -> screenH - pitchY - 12.dp - nameRoom - firstGap
+        peek -> screenH - pitchY - 12.dp - firstGap
         // Nothing peeks under the row, so it goes as low as it fits: the plate as far from the
         // bottom edge as from the sides, or without a plate, room for the focused app's name.
         plate -> screenH - tileH - (PlateMarginBottom + PlatePadV) - firstGap
@@ -405,13 +416,12 @@ fun HomeScreen(
         val rows = (apps.size + COLUMNS - 1) / COLUMNS
         // With a single row of apps the two-row layout would leave the bottom of the screen empty.
         val oneRow = AerialSettings.oneRowHome || rows <= 1
-        val nameRoom = if (AerialSettings.showAllNames) NameRoom else 0.dp
         // With every name shown, the top row's go on its glass plate, which grows to hold them.
         val plateNames = AerialSettings.showAllNames && AerialSettings.homePlate
         val peek = AerialSettings.peekNextRow
         val hasPlate = AerialSettings.homePlate
-        val metrics = remember(maxWidth, maxHeight, oneRow, nameRoom, plateNames, peek, hasPlate) {
-            GridMetrics(maxWidth, maxHeight, oneRow, nameRoom, plateNames, peek, hasPlate)
+        val metrics = remember(maxWidth, maxHeight, oneRow, plateNames, peek, hasPlate) {
+            GridMetrics(maxWidth, maxHeight, oneRow, plateNames, peek, hasPlate)
         }
         val collapsePx = with(density) { (metrics.topRowY - metrics.restY).toPx() }
 
@@ -423,8 +433,9 @@ fun HomeScreen(
         LaunchedEffect(target, dragged) {
             if (dragged) return@LaunchedEffect
             if (reduced) scroll.snapTo(target)
-            // A spring keeps its velocity when a quick second press retargets it mid-flight.
-            else scroll.animateTo(target, spring(dampingRatio = 1f, stiffness = 170f))
+            // A spring keeps its velocity when a quick second press retargets it mid-flight. At 170
+            // a row took about 300 ms to get 90% of the way and half a second to settle.
+            else scroll.animateTo(target, spring(dampingRatio = 1f, stiffness = 280f))
         }
 
         // The folder open, or under its app's menu.
@@ -443,12 +454,15 @@ fun HomeScreen(
         // With Control Center open, Home is still: once the panel is in, a picture of it stands in
         // for it, one full-screen image a frame instead of every tile again under the panel
         // (MiTV-MFTR0: GPU 18-21 ms a frame drawing Home under it, as against 9-15 ms frosted).
-        // Taken again now and then for the clock.
+        // Taken again now and then for the clock. Not before Android 7: on Android 6 the picture's
+        // ImageReader surface leaves a RenderNode that the finalizer thread later frees together
+        // with GPU layers, and hwui aborts with "Wrong thread!" (MiTV4-ANSM0, Android 6.0.1,
+        // issue #466: the reporter rebuilt the same steps in a small app and got the same 16 frames).
         val homeLayer = rememberGraphicsLayer()
         var homeShot by remember { mutableStateOf<ImageBitmap?>(null) }
         LaunchedEffect(ccOpen) {
             homeShot = null
-            if (!ccOpen) return@LaunchedEffect
+            if (!ccOpen || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return@LaunchedEffect
             delay(HOME_SHOT_AFTER_MS)
             while (true) {
                 homeShot = runCatching { homeLayer.toImageBitmap() }.getOrNull()
@@ -482,7 +496,7 @@ fun HomeScreen(
                 }
                 // Recorded while Control Center is open, for the picture that stands in for Home.
                 .drawWithContent {
-                    if (ccOpen) {
+                    if (ccOpen && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                         homeLayer.record { this@drawWithContent.drawContent() }
                         drawLayer(homeLayer)
                     } else drawContent()
@@ -526,7 +540,21 @@ fun HomeScreen(
                 saverPush = { saverPush.value },
             )
 
-            Box(Modifier.fillMaxSize().offset { IntOffset(0, -scroll.value.roundToInt()) }) {
+            // Before Android 7 there is no picture of Home under Control Center (issue #466), so the
+            // GPU draws every tile again under the panel each frame. Lite there lets the clock and
+            // the tiles fade out under the panel's veil; the wallpaper and plate stay.
+            val shedUnderPanel = Build.VERSION.SDK_INT < Build.VERSION_CODES.N && AerialSettings.lite
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .offset { IntOffset(0, -scroll.value.roundToInt()) }
+                    .then(
+                        if (shedUnderPanel) Modifier.graphicsLayer {
+                            alpha = 1f - backdropVeil
+                            compositingStrategy = CompositingStrategy.ModulateAlpha
+                        } else Modifier,
+                    ),
+            ) {
                 val clockRight = AerialSettings.clockRight
                 // The large clock stands over the top row; the small one is the time and weather in
                 // one line, top left or beside the pill, so the wallpaper keeps the screen.
@@ -695,8 +723,8 @@ fun HomeScreen(
 
         AnimatedVisibility(
             visible = moving != null,
-            enter = fadeIn(tween(200)) + slideInVertically(tween(260, easing = Motion.EaseOut)) { it / 2 },
-            exit = fadeOut(tween(150)) + slideOutVertically(tween(150, easing = Motion.EaseOut)) { it / 2 },
+            enter = fadeIn(tween(200, easing = Motion.EaseOut)) + slideInVertically(tween(260, easing = Motion.EaseOut)) { it / 2 },
+            exit = fadeOut(tween(150, easing = Motion.EaseOut)) + slideOutVertically(tween(150, easing = Motion.EaseOut)) { it / 2 },
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp),
         ) {
             // Screens that can be touched also say how to move with a finger.
@@ -711,6 +739,21 @@ fun HomeScreen(
             )
         }
 
+        // Once per process, while Home is idle: Control Center drawn for a few frames, nearly
+        // transparent, so that its first opening is not its first draw (see ControlCenter).
+        var ccWarm by remember { mutableStateOf(false) }
+        LaunchedEffect(vm.loaded) {
+            if (!vm.loaded || ControlCenterWarmed.done) return@LaunchedEffect
+            while (true) {
+                delay(CC_WARM_AFTER_MS)
+                val idle = SystemClock.uptimeMillis() - vm.lastInputAt > CC_WARM_AFTER_MS
+                if (idle && vm.overlay == Overlay.None && !vm.screensaverVisible && vm.resumed) break
+            }
+            ControlCenterWarmed.done = true
+            ccWarm = true
+            repeat(3) { withFrameNanos { } }
+            ccWarm = false
+        }
         ControlCenter(
             visible = overlay is Overlay.ControlCenter,
             page = (overlay as? Overlay.ControlCenter)?.page ?: CcPage.Main,
@@ -718,6 +761,7 @@ fun HomeScreen(
             now = now,
             onOpen = { vm.overlay = Overlay.None; onOpen(it) },
             onClose = { vm.overlay = Overlay.None },
+            warm = ccWarm,
         )
 
         FolderView(

@@ -127,6 +127,8 @@ fun MenuRow(
 
 private enum class MenuPage { Main, Folders, Rename, Device }
 
+private val MenuWidth = 250.dp
+
 /**
  * Long-press menu, opening out of the tile it belongs to. Choosing a folder or a folder's name
  * opens a list in the same menu; Back returns from it.
@@ -164,6 +166,15 @@ fun AppMenu(
     val screenH = LocalWindowInfo.current.containerSize.height.toFloat()
     // Open below the tile when there is room for the whole menu, otherwise above it.
     val below = shownAnchor.bottom + with(density) { 296.dp.toPx() } <= screenH
+    // The menu grows out of the tile's middle. A fixed point on the menu missed it once the menu
+    // was held inside the screen (the last column) or sat wider than the tile.
+    val screenW = LocalWindowInfo.current.containerSize.width.toFloat()
+    val originX = with(density) {
+        val menuW = MenuWidth.toPx()
+        val x = shownAnchor.left.coerceIn(24.dp.toPx(), (screenW - menuW - 24.dp.toPx()).coerceAtLeast(24.dp.toPx()))
+        ((shownAnchor.center.x - x) / menuW).coerceIn(0f, 1f)
+    }
+    val origin = TransformOrigin(originX, if (below) 0f else 1f)
     var page by remember(shownApp.key, visible) { mutableStateOf(MenuPage.Main) }
     val folder = shownApp.folder
     val holder = folders.firstOrNull { shownApp.key in it.apps }
@@ -191,12 +202,12 @@ fun AppMenu(
     ) {
         AnimatedVisibility(
             visible = visible,
-            enter = fadeIn(tween(160)) + scaleIn(tween(220, easing = Motion.EaseOut), initialScale = 0.92f, transformOrigin = TransformOrigin(0.2f, if (below) 0f else 1f)),
-            exit = fadeOut(tween(120)) + scaleOut(tween(120, easing = Motion.EaseOut), targetScale = 0.96f, transformOrigin = TransformOrigin(0.2f, if (below) 0f else 1f)),
+            enter = fadeIn(tween(160, easing = Motion.EaseOut)) + scaleIn(tween(220, easing = Motion.EaseOut), initialScale = 0.92f, transformOrigin = origin),
+            exit = fadeOut(tween(120, easing = Motion.EaseOut)) + scaleOut(tween(120, easing = Motion.EaseOut), targetScale = 0.96f, transformOrigin = origin),
         ) {
             Column(
                 Modifier
-                    .width(250.dp)
+                    .width(MenuWidth)
                     .consumeTaps()
                     .liquidGlass(20.dp)
                     .padding(8.dp),
@@ -335,8 +346,8 @@ fun HiddenAppsSheet(
     }
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(200)) + scaleIn(tween(300, easing = Motion.Drawer), initialScale = 0.94f),
-        exit = fadeOut(tween(150)) + scaleOut(tween(150, easing = Motion.EaseOut), targetScale = 0.97f),
+        enter = fadeIn(tween(200, easing = Motion.EaseOut)) + scaleIn(tween(300, easing = Motion.Drawer), initialScale = 0.94f),
+        exit = fadeOut(tween(150, easing = Motion.EaseOut)) + scaleOut(tween(150, easing = Motion.EaseOut), targetScale = 0.97f),
         modifier = Modifier.fillMaxSize(),
     ) {
         Box(Modifier.fillMaxSize().dismissOnTap(onDismiss).background(Color.Black.copy(alpha = 0.35f)), contentAlignment = Alignment.Center) {
@@ -399,8 +410,8 @@ fun NoticeBanner(text: String?, modifier: Modifier = Modifier) {
     AnimatedVisibility(
         visible = text != null,
         modifier = modifier,
-        enter = fadeIn(tween(200)) + slideInVertically(tween(320, easing = Motion.EaseOut)) { -it / 2 },
-        exit = fadeOut(tween(200)) + slideOutVertically(tween(240, easing = Motion.EaseOut)) { -it / 3 },
+        enter = fadeIn(tween(200, easing = Motion.EaseOut)) + slideInVertically(tween(320, easing = Motion.EaseOut)) { -it / 2 },
+        exit = fadeOut(tween(200, easing = Motion.EaseOut)) + slideOutVertically(tween(240, easing = Motion.EaseOut)) { -it / 3 },
     ) {
         Row(
             Modifier

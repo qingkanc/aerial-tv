@@ -46,17 +46,22 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.lifecycleScope
 import app.orchard.tv.apps.AppEntry
 import app.orchard.tv.apps.CustomIcons
+import app.orchard.tv.apps.AppNames
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.TileArtFactory
 import app.orchard.tv.guard.GuardSetup
 import app.orchard.tv.guard.HomeGuardService
 import app.orchard.tv.ui.home.HomeScreen
 import app.orchard.tv.ui.home.LiveFilm
+import app.orchard.tv.ui.home.asFocusedTile
 import app.orchard.tv.ui.theme.LocalReducedMotion
+import app.orchard.tv.ui.home.TileFaces
+import app.orchard.tv.ui.theme.FontWarmup
 import app.orchard.tv.ui.theme.canvasDensity
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.wallpaper.Wallpapers
 import app.orchard.tv.system.DiagLog
+import app.orchard.tv.system.FrameStats
 import app.orchard.tv.wallpaper.ScreensaverMode
 import app.orchard.tv.system.SystemScreensaver
 import app.orchard.tv.system.Diagnostics
@@ -83,7 +88,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val volumeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) = vm.refreshSystem()
+        override fun onReceive(context: Context, intent: Intent) = vm.refreshVolume()
     }
 
     /** Midnight, or the clock set at boot: a new daily photo, and the next of the rotating ones. */
@@ -119,7 +124,7 @@ class MainActivity : ComponentActivity() {
     private var locked = false
 
     private val unlocked = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) = startUnlocked()
+        override fun onReceive(context: Context, intent: Intent) = startReal(null)
     }
 
     private fun showLocked() {
@@ -130,18 +135,10 @@ class MainActivity : ComponentActivity() {
         window.setBackgroundDrawable(picture?.let { BitmapDrawable(resources, it) } ?: ColorDrawable(Color.BLACK))
         ContextCompat.registerReceiver(this, unlocked, IntentFilter(Intent.ACTION_USER_UNLOCKED), ContextCompat.RECEIVER_EXPORTED)
         // Unlocked between the check and the registration.
-        if (GuardSetup.isUserUnlocked(this)) startUnlocked()
+        if (GuardSetup.isUserUnlocked(this)) startReal(null)
     }
 
-    private var recreating = false
-
-    /** The locked instance stays locked to its end: it has set up none of what the rest undo. */
-    private fun startUnlocked() {
-        if (!locked || recreating) return
-        recreating = true
-        startedLocked = true
-        recreate()
-    }
+    private var realStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         DiagLog.catchCrashes()
@@ -151,41 +148,61 @@ class MainActivity : ComponentActivity() {
             showLocked()
             return
         }
+        super.onCreate(savedInstanceState)
+        startReal(savedInstanceState)
+    }
+
+    /**
+     * The real start, in the window the locked instance already shows. Recreating the activity at
+     * the unlock left the screen black for the second or two the new window took: unlock 20.4 s,
+     * new window 21.9 s, first frame 22.5 s on an OPPO K9 (ColorOS TV 2.4, 2026-10-24).
+     */
+    private fun startReal(savedInstanceState: Bundle?) {
+        if (realStarted) return
+        realStarted = true
+        val fromLocked = locked
+        if (locked) {
+            locked = false
+            runCatching { unregisterReceiver(unlocked) }
+        }
         DiagLog.init(this)
         DiagLog.i("onCreate ${intent.action} restored=${savedInstanceState != null}; ${DiagLog.device()}")
-        super.onCreate(savedInstanceState)
         hideSystemBars()
-        // Recreated at unlock: this is the boot's first real start, though the state was saved.
-        val fresh = savedInstanceState == null || startedLocked
-        startedLocked = false
+        // Unlocked at power-on: what the system kept. Unlocked under the locked window: nothing to
+        // restore, and this is the boot's first real start.
+        val fresh = savedInstanceState == null
+        FontWarmup.start(this)
         TileArtFactory.useCanvasDensity(canvasDensity(resources.displayMetrics))
         Wallpapers.init(this)
         Weather.init(this)
         Updates.init(this)
         CustomIcons.init(this)
         SourceLooks.init(this)
+        AppNames.init(this)
         AerialSettings.init(this)
         Sounds.init(this)
         val reducedMotion = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
         // The home screen paints every pixel itself; a window background would be one more
         // full-screen fill per frame for the TV's GPU. Only until Home's first frame, the backdrop
-        // baked at the last start, so the window never shows black while Compose sets up.
+        // baked at the last start, so the window never shows black while Compose sets up. Without
+        // one, keep what the window already shows (the kept backdrop of a locked start).
         val baked = Wallpapers.backdrop
-        window.setBackgroundDrawable(baked?.let { BitmapDrawable(resources, it.asAndroidBitmap()) })
-        if (baked != null) {
-            window.decorView.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
-                override fun onDraw() {
-                    // Not from inside the draw itself.
-                    idleHandler.post {
-                        window.setBackgroundDrawable(null)
-                        window.decorView.viewTreeObserver.removeOnDrawListener(this)
-                    }
+        if (baked != null) window.setBackgroundDrawable(BitmapDrawable(resources, baked.asAndroidBitmap()))
+        // Clear whatever the window showed until the first frame (the baked backdrop, or the kept
+        // one of a locked start): from then on Home paints every pixel itself.
+        window.decorView.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
+            override fun onDraw() {
+                // Not from inside the draw itself.
+                idleHandler.post {
+                    window.setBackgroundDrawable(null)
+                    window.decorView.viewTreeObserver.removeOnDrawListener(this)
                 }
-            })
-        }
+            }
+        })
         if (DiagLog.modeSwitch(this)) preferSmoothestRefreshRate() else DiagLog.i("refresh rate left as it is (mode_switch off)")
         if (DiagLog.softLayer(this)) window.decorView.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+        FrameStats.attach(window)
         logWindow()
 
         setContent {
@@ -224,6 +241,14 @@ class MainActivity : ComponentActivity() {
         }
         if (fresh && firstStartSinceBoot()) openBootSource("boot")
         if (intent.getBooleanExtra(EXTRA_WOKE, false)) openBootSource("brought back on wake")
+        if (fromLocked) {
+            // This window already went through onStart and onResume while locked (both returned
+            // early) and the system will not call them again unless it stops and starts the
+            // activity: do their work for the state it is in now. Doing it unconditionally would
+            // register receivers while stopped, or mark Aerial resumed with the screen off.
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) startWork()
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) resumeWork()
+        }
     }
 
     private fun hideSystemBars() {
@@ -232,6 +257,23 @@ class MainActivity : ComponentActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+    }
+
+    /**
+     * The system is short of memory. On a 1-2 GB TV Aerial is killed in the background while a
+     * video plays, and Home then starts cold at the next press of Home (issue #294); what it can
+     * make again cheaply goes first, so that it is less likely to be the process picked.
+     */
+    @Suppress("DEPRECATION")
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // Memory running low, or Aerial in the background on the system's list to kill. Not merely
+        // Home out of sight (UI_HIDDEN, every time an app opens): coming back, the first moves along
+        // the row would make the focused faces again on the main thread.
+        if (level < TRIM_MEMORY_RUNNING_LOW || level == TRIM_MEMORY_UI_HIDDEN) return
+        DiagLog.i("trim memory, level $level")
+        Wallpapers.trimMemory()
+        TileFaces.trimMemory()
     }
 
     override fun onDestroy() {
@@ -314,6 +356,8 @@ class MainActivity : ComponentActivity() {
      */
     private fun preferSmoothestRefreshRate() {
         if (Build.VERSION.SDK_INT < 31) return
+        // Twice the frames is twice the GPU's work: Lite stays at the rate the TV chose.
+        if (AerialSettings.lite) return DiagLog.i("refresh rate left as it is (lite effects)")
         val display = display ?: return
         val current = display.mode
         val seamless = current.alternativeRefreshRates
@@ -403,12 +447,13 @@ class MainActivity : ComponentActivity() {
         // the same format, so there is no black between them; the dream would be a new player in a
         // new window, and showed black even in 4K (TCL MT5879).
         val carry = Wallpapers.selectedId == Wallpapers.LIVE && Wallpapers.screensaver == ScreensaverMode.Aerial
-        if (!carry && SystemScreensaver.isAerials(this)) {
+        if (!carry && !dreamFails && SystemScreensaver.isAerials(this)) {
             // The dream's film needs the decoder the wallpaper's holds: TCL MT5879 failed Dolby
             // Vision beside it and the dream fell back to 4K HEVC.
             LiveFilm.onHome?.letDecoderGo()
             if (SystemScreensaver.startDream(this)) {
                 DiagLog.i("screensaver starts as the system's dream")
+                dreamAskedAt = SystemClock.uptimeMillis()
                 return
             }
             LiveFilm.onHome?.goOn()
@@ -421,6 +466,22 @@ class MainActivity : ComponentActivity() {
         idleHandler.postDelayed(releaseScreen, SCREENSAVER_HOLD_MS)
     }
     private val releaseScreen = Runnable { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+
+    /**
+     * When Aerial last asked the system for its dream. The dream's starter closes at once and Home
+     * resumes; a dream that shows pauses it again within a moment. Hisense VIDAA (MT9655, Android
+     * 14, issue #525; T963D4, Android 11, issue #533) never shows it, so Home stayed in front, its
+     * wallpaper's film let go for nothing.
+     */
+    private var dreamAskedAt = Long.MIN_VALUE / 2
+    private val dreamCheck = Runnable {
+        // Up to Android 10 the dream is a window over Home, which stays resumed: the focus says.
+        if (!vm.resumed || !hasWindowFocus()) return@Runnable
+        dreamFails = true
+        DiagLog.i("the system's dream did not show; Aerial's own screensaver instead")
+        LiveFilm.onHome?.goOn()
+        startScreensaver(asked = false)
+    }
     private var swallowKeyUp = -1
 
     /**
@@ -546,6 +607,11 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         if (locked) return
+        startWork()
+    }
+
+    /** What onStart does once the user is unlocked; also run by a start that was locked before. */
+    private fun startWork() {
         DiagLog.i("onStart")
         GuardSetup.ensureEnabled(this)
         idleHandler.postDelayed({ GuardSetup.rebindIfStalled(this) }, 5_000)
@@ -590,8 +656,14 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (locked) return
+        resumeWork()
+    }
+
+    /** What onResume does once the user is unlocked; also run by a start that was locked before. */
+    private fun resumeWork() {
         vm.resumed = true
         DiagLog.i("onResume; screensaver after ${idleBeforeScreensaver() / 1000} s")
+        if (SystemClock.uptimeMillis() - dreamAskedAt < 1_000) idleHandler.postDelayed(dreamCheck, 1_500)
         restartIdleTimer()
         GuardSetup.setHomeInFront(this, true)
         HomeGuardService.onAerialResumed()
@@ -612,7 +684,9 @@ class MainActivity : ComponentActivity() {
         vm.resumed = false
         DiagLog.i("onPause")
         GuardSetup.setHomeInFront(this, false)
+        HomeGuardService.onAerialPaused()
         idleHandler.removeCallbacks(showScreensaver)
+        idleHandler.removeCallbacks(dreamCheck)
         hideScreensaver()
     }
 
@@ -639,7 +713,7 @@ class MainActivity : ComponentActivity() {
         if (HomeGuardService.isStockHome(app.packageName) &&
             HomeGuardService.openStockLauncher(app.packageName) { runCatching { startActivity(app.launchIntent()) }.isSuccess }
         ) return
-        val options = bounds?.let {
+        val options = bounds?.asFocusedTile()?.let {
             ActivityOptions.makeScaleUpAnimation(
                 window.decorView, it.left.toInt(), it.top.toInt(), it.width.toInt(), it.height.toInt(),
             ).toBundle()
@@ -661,8 +735,8 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        /** Set as the locked start recreates itself at unlock; read by the next onCreate. */
-        private var startedLocked = false
+        /** The system's dream did not show when asked (see dreamCheck); for this process. */
+        private var dreamFails = false
 
         /** How Home Guard and the boot receiver bring Aerial back: the same task the launcher entry uses. */
         fun bringBackIntent(context: Context): Intent =

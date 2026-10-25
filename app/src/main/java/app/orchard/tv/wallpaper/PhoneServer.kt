@@ -8,7 +8,11 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.getSystemService
 import app.orchard.tv.apps.AppCatalog
+import app.orchard.tv.apps.FOLDER_KEY_PREFIX
+import app.orchard.tv.apps.AppEntry
+import app.orchard.tv.apps.AppNames
 import app.orchard.tv.apps.CustomIcons
+import app.orchard.tv.apps.SourceDevice
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.TileArtFactory
 import app.orchard.tv.settings.AerialSettings
@@ -89,6 +93,34 @@ class PhoneServer private constructor(private val context: Context, private val 
                     if (source != null) runBlocking(Dispatchers.Main) { SourceLooks.rename(source.id, f["name"]) }
                     json(state())
                 }
+                session.method == Method.POST && path == "/api/app/name" -> {
+                    val f = form(session)
+                    val key = f["app"].orEmpty()
+                    val source = AppCatalog.pinnedSources.firstOrNull { it.key == key }?.source
+                    // On the main thread before answering, so the state sent back has the new name.
+                    val saved = when {
+                        source != null -> { runBlocking(Dispatchers.Main) { SourceLooks.rename(source.id, f["name"]) }; true }
+                        AppCatalog.loaded.any { it.key == key } -> { runBlocking(Dispatchers.Main) { AppNames.rename(key, f["name"]) }; true }
+                        else -> false
+                    }
+                    json(state().put("saved", saved))
+                }
+                session.method == Method.POST && path == "/api/layout" -> layout(form(session))
+                session.method == Method.POST && path == "/api/source/device" -> {
+                    val f = form(session)
+                    val source = AppCatalog.pinnedSources.firstOrNull { it.key == f["app"] }?.source
+                    // As from the tile's menu: a device names the tile after it, "" goes back to the plain input.
+                    if (source != null) runBlocking(Dispatchers.Main) { SourceLooks.chooseDevice(source.id, SourceDevice.of(f["device"])) }
+                    json(state().put("saved", source != null))
+                }
+                session.method == Method.POST && path == "/api/source/pin" -> {
+                    val f = form(session)
+                    val id = f["id"].orEmpty()
+                    val pin = AppCatalog.pinSource
+                    val known = AppCatalog.sources.any { it.id == id }
+                    if (known && pin != null) runBlocking(Dispatchers.Main) { pin(id, f["pinned"] == "1") }
+                    json(state().put("saved", known && pin != null))
+                }
                 session.method == Method.POST && path == "/api/folder/name" -> {
                     val f = form(session)
                     val id = f["id"].orEmpty()
@@ -142,15 +174,32 @@ class PhoneServer private constructor(private val context: Context, private val 
             .put("focusStyle", AerialSettings.focusStyle.key)
             .put("wallpapers", list)
             .put("apps", JSONArray().apply {
-                // Pinned inputs first: they can also be named here.
-                (AppCatalog.pinnedSources + AppCatalog.loaded.sortedBy { it.label }).forEach { a ->
-                    // The stamp makes the phone fetch the tile again once its picture changes.
+                // Pinned inputs first, then apps by the name Home shows. [default] is the name a
+                // blank one goes back to; [name] is the one typed on this page, if any.
+                val apps = AppCatalog.loaded.map { it to (AppNames.of(it.key) ?: it.label) }.sortedBy { it.second }
+                AppCatalog.pinnedSources.forEach { a ->
+                    val src = a.source ?: return@forEach
                     // An input's label as Home will show it once it has arranged the new look.
-                    val label = a.source?.let { src ->
-                        SourceLooks.of(src.id)?.let { it.name ?: it.device?.let { d -> context.getString(d.label) } } ?: src.label
-                    } ?: a.label
-                    put(JSONObject().put("key", a.key).put("label", label).put("custom", CustomIcons.has(a.key)).put("stamp", CustomIcons.stamp(a.key))
-                        .apply { a.source?.let { put("source", true).put("port", it.label).put("name", SourceLooks.of(it.id)?.name ?: "").put("look", SourceLooks.of(it.id).hashCode()) } })
+                    val look = SourceLooks.of(src.id)
+                    val label = look?.let { it.name ?: it.device?.let { d -> context.getString(d.label) } } ?: src.label
+                    // The stamp makes the phone fetch the tile again once its picture changes.
+                    put(JSONObject().put("key", a.key).put("label", label).put("default", src.label).put("custom", CustomIcons.has(a.key)).put("stamp", CustomIcons.stamp(a.key))
+                        .put("source", true).put("port", src.label).put("name", look?.name ?: "").put("device", look?.device?.key ?: "").put("look", look.hashCode()))
+                }
+                apps.forEach { (a, label) ->
+                    put(JSONObject().put("key", a.key).put("label", label).put("default", a.label).put("name", AppNames.of(a.key) ?: "")
+                        .put("custom", CustomIcons.has(a.key)).put("stamp", CustomIcons.stamp(a.key)))
+                }
+            })
+            .put("layout", layoutState())
+            .put("devices", JSONArray().apply { SourceDevice.entries.forEach { put(JSONObject().put("key", it.key).put("label", context.getString(it.label))) } })
+            .put("inputs", JSONArray().apply {
+                // Every input Home knows of, for pinning to Home from the phone.
+                AppCatalog.sources.forEach { src ->
+                    val look = SourceLooks.of(src.id)
+                    put(JSONObject().put("id", src.id).put("port", src.label).put("device", src.deviceName ?: "")
+                        .put("name", look?.let { it.name ?: it.device?.let { d -> context.getString(d.label) } } ?: "")
+                        .put("pinned", src.id in AerialSettings.pinnedSources))
                 }
             })
             .put("folders", JSONArray().apply {
@@ -166,9 +215,55 @@ class PhoneServer private constructor(private val context: Context, private val 
             })
     }
 
+    /** Home in order, each folder's apps and the hidden apps, by the names Home shows. */
+    private fun layoutState(): JSONObject {
+        fun tile(e: AppEntry) = JSONObject().put("key", e.key).put("label", e.label)
+            .put("kind", when { e.folder != null -> "folder"; e.source != null -> "source"; else -> "app" })
+            // Folder and input art changes without a picture from the phone (contents, chosen device).
+            .put("stamp", if (e.folder != null || e.source != null) e.art.hashCode().toLong() else CustomIcons.stamp(e.key))
+            .apply { e.folder?.let { put("id", it.id) }; e.source?.let { put("port", it.label) } }
+        val folders = JSONObject()
+        AppCatalog.folderApps.forEach { (id, apps) -> folders.put(id, JSONArray().apply { apps.forEach { put(tile(it)) } }) }
+        // With the parental PIN on, hidden apps stay hidden from here: on the TV, seeing them takes the PIN.
+        val locked = AerialSettings.locked
+        return JSONObject()
+            .put("home", JSONArray().apply { AppCatalog.home.forEach { put(tile(it)) } })
+            .put("folders", folders)
+            .put("hidden", JSONArray().apply { if (!locked) AppCatalog.hiddenApps.forEach { put(tile(it)) } })
+            .put("hiddenCount", AppCatalog.hiddenApps.size)
+            .put("locked", locked)
+            .put("ready", AppCatalog.layout != null)
+    }
+
+    /**
+     * One step of arranging Home from the phone: [op] is move, movein, hide, unhide, folder (into
+     * [folder], or a new one when it is empty), unfolder or ungroup. Done on the main thread before
+     * answering, so the state sent back shows it.
+     */
+    private fun layout(f: Map<String, String>): Response {
+        val ops = AppCatalog.layout ?: return json(state().put("saved", false))
+        val key = f["key"].orEmpty()
+        val target = f["target"].orEmpty()
+        val folder = f["folder"].orEmpty()
+        val known = (AppCatalog.home + AppCatalog.folderApps.values.flatten() + AppCatalog.hiddenApps).map { it.key }.toSet()
+        val step: (() -> Unit)? = when (f["op"]) {
+            "move" -> if (key in known && target in known) ({ ops.move(key, target) }) else null
+            "movein" -> if (key in known && target in known) ({ ops.moveInFolder(key, target) }) else null
+            "hide" -> if (key in known) ({ ops.hide(key) }) else null
+            "unhide" -> if (key in known && !AerialSettings.locked) ({ ops.unhide(key) }) else null
+            "folder" -> if (key in known && !key.startsWith(FOLDER_KEY_PREFIX)) ({ ops.toFolder(key, folder.ifEmpty { null }) }) else null
+            "unfolder" -> if (key in known) ({ ops.outOfFolder(key) }) else null
+            "ungroup" -> if (folder in AppCatalog.folderApps) ({ ops.ungroup(folder) }) else null
+            else -> null
+        }
+        if (step != null) runBlocking(Dispatchers.Main) { step() }
+        return json(state().put("saved", step != null))
+    }
+
     /** An app on the TV or a pinned input: the only tiles a picture may be sent for. */
+    /** An app, a firmware shortcut such as Xiaomi's children's mode (issue #530), or a pinned input. */
     private fun installed(pkg: String) =
-        (CustomIcons.isValidKey(pkg) && AppCatalog.loaded.any { it.key == pkg }) || AppCatalog.pinnedSources.any { it.key == pkg }
+        pkg.isNotEmpty() && (AppCatalog.loaded.any { it.key == pkg } || AppCatalog.pinnedSources.any { it.key == pkg })
 
     private fun tile(pkg: String): Response {
         val app = (AppCatalog.pinnedSources + AppCatalog.loaded + AppCatalog.folders).firstOrNull { it.key == pkg } ?: return text(Response.Status.NOT_FOUND, "")

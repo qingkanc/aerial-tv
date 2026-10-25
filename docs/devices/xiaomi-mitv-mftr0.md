@@ -60,7 +60,7 @@
 ## 其他
 
 - 背光：`Settings.Global picture_backlight`（0–100），改了以后 `tvmenusettingsservice` 会立即应用。需要 `WRITE_SECURE_SETTINGS`。
-- 音量：普通的 `adjustStreamVolume` 就能生效。
+- 音量：普通的 `adjustStreamVolume` 就能生效。音量键在过滤器之前就被小米处理了，守护的 `onKeyEvent` 收不到；但只要无障碍过滤开着（Aerial 在前台时），按住音量键只调一格、不连发，关掉过滤就连发（2026-10-24 用 `uinput` 测：不过滤时按住 1.5 秒 1→6，过滤时只加 1）。MFTP0（Android 9）一直开着过滤，所以哪里都不连发（#460 #335）。
 - 信号源：HW5/6/7 = HDMI 1/2/3（HDMI 2 是 eARC），HW8 是不存在的第 4 个口（已隐藏）；HW2 = AV，HW1 = ATV，HW0 = DTMB。切换用 `com.xiaomi.mitv.tvplayer` 的 Intent（参考 tv-vibehack 仓库的设备笔记）。CEC 的 OSD 名（如「Apple TV」）只有系统权限能读，第三方 App 拿到的是 `Playback_1`。
 - 设置：`com.xiaomi.mitv.settings/.entry.MainActivity`；Wi-Fi：`.wifi.MitvWifiActivity`。
 - 截图：`adb shell screencap -p /data/local/tmp/x.png` 再 `adb pull`（直接 `exec-out` 在部分小米机型上会坏）。视频画面能截到。

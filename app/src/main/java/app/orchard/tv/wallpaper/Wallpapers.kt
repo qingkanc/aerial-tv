@@ -225,6 +225,9 @@ object Wallpapers {
             ?: Gradients.render(Gradients.presets.first(), w, h)
     }
 
+    /** Drops the thumbnails (about 330 KB each); the picker makes them again when it opens. */
+    fun trimMemory() = synchronized(thumbs) { thumbs.clear() }
+
     /** A 16:9 thumbnail for pickers and the phone page. Call off the main thread. */
     fun thumbnail(id: String): Bitmap? {
         synchronized(thumbs) { thumbs[id] }?.let { return it }

@@ -76,3 +76,9 @@ Home Guard is running. Press Home on the remote.
 - 一次装成功，`install.sh` 的结尾输出和上面一致，装的版本是 1.31。
 - 验收 5 条全部通过：`versionName=1.31`、`enabled_accessibility_services` 里有 `HomeGuardService`、`dumpsys accessibility` 计数为 1、按 HOME 后前台是 `app.orchard.tv/.MainActivity`。
 - 重启后开机直接进入 Aerial，实机确认正常（这次没有留 adb 采样输出）。
+
+## 待机强停（#534，用户反编译 services.jar 并实测）
+
+- 深睡 STR 走 `killAllThirdAppForStr()`，按包名强停，但跳过 `Settings.System` 的 `str_killbackgroud_pkg_white_list`（逗号分隔，ADB 可写，不用 root）：`adb shell settings put system str_killbackgroud_pkg_white_list app.orchard.tv`。
+- 音箱模式待机走 `gotoSleepStayAliveProcess()`：不在名单就回原桌面、2 秒后 `killAllThirdApp`，这就是唤醒时闪 PatchWall。`disable_back_home_whitelist` 只认字面量 `disable`（写包名无效），设成 `disable` 后所有第三方应用待机都保活。
+- 这两项是机主自己的选择，install.sh 不设。

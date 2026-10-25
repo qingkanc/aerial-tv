@@ -8,6 +8,7 @@ import androidx.core.content.edit
 import android.os.SystemClock
 import android.provider.Settings
 import app.orchard.tv.guard.GuardSetup
+import app.orchard.tv.system.DeviceClass
 import app.orchard.tv.wallpaper.AerialQuality
 import java.security.MessageDigest
 
@@ -35,6 +36,21 @@ enum class UiSounds(val key: String) {
 
     companion object {
         fun of(key: String?) = entries.firstOrNull { it.key == key }
+    }
+}
+
+/**
+ * How much of the interface's light and motion to draw. Full is the glass panels, a focused tile's
+ * sheen, parallax and shadow, and the panel's highest refresh rate. Lite draws the panels in plain
+ * dark glass (no offscreen layer per frame), a focused tile without sheen, parallax or shadow, and
+ * stays at 60 Hz: for TVs whose GPU cannot keep up (issues #232, #354). Auto is Lite on a low-end
+ * TV (DeviceClass) and Full elsewhere.
+ */
+enum class Effects(val key: String) {
+    Auto("auto"), Full("full"), Lite("lite");
+
+    companion object {
+        fun of(key: String?) = entries.firstOrNull { it.key == key } ?: Auto
     }
 }
 
@@ -117,6 +133,14 @@ object AerialSettings {
 
     /** Which of Apple's files the aerial screensaver plays; Auto is the best this TV decodes (issues #198, #217). */
     var aerialQuality by mutableStateOf(AerialQuality.Auto); private set
+
+    var effects by mutableStateOf(Effects.Auto); private set
+
+    /** This TV counts as low-end for [Effects.Auto]; see DeviceClass. */
+    var lowEnd = false; private set
+
+    /** Draw the lighter interface (see [Effects]). */
+    val lite: Boolean get() = effects == Effects.Lite || (effects == Effects.Auto && lowEnd)
     private const val DEFAULT_SCREENSAVER_MINUTES = 5
 
     fun init(context: Context) {
@@ -146,6 +170,8 @@ object AerialSettings {
         backStartsScreensaver = prefs.getBoolean("back_starts_screensaver", true)
         screensaverMinutes = prefs.getInt("screensaver_minutes", DEFAULT_SCREENSAVER_MINUTES)
         aerialQuality = AerialQuality.of(prefs.getString("aerial_quality", null))
+        effects = Effects.of(prefs.getString("effects", null))
+        lowEnd = DeviceClass.lowEnd(app)
     }
 
     fun chooseBootSource(id: String?) {
@@ -241,6 +267,11 @@ object AerialSettings {
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putStringSet("pinned_sources", pinnedSources) }
     }
 
+
+    fun chooseEffects(choice: Effects) {
+        effects = choice
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("effects", choice.key) }
+    }
 
     fun chooseFocusStyle(style: FocusStyle) {
         focusStyle = style

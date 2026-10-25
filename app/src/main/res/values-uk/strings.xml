@@ -146,6 +146,12 @@
     <string name="st_focus_standard">Стандартний</string>
     <string name="st_focus_high_hint">Біла рамка навколо вибраного застосунку, добре помітна з іншого кінця кімнати.</string>
     <string name="st_focus_standard_hint">Як на Apple TV з коробки: вибраний застосунок лише трохи підіймається.</string>
+    <string name="st_effects">Ефекти</string>
+    <string name="st_effects_auto">Авто</string>
+    <string name="st_effects_full">Повні</string>
+    <string name="st_effects_lite">Легкі</string>
+    <string name="st_effects_hint">Легкі: прості панелі, вибраний застосунок без відблиску, екран лишається на 60 Гц. Для телевізорів, що пригальмовують.</string>
+    <string name="st_effects_auto_lite_hint">У цього телевізора мало пам\'яті або старий Android, тому «Авто» вибирає легкі.</string>
     <string name="cc_inputs_settings">Налаштування джерел</string>
     <string name="cc_inputs_pin">Показувати на головному екрані (будь-яка кількість)</string>
     <string name="cc_inputs_boot">Під час вмикання телевізора (одне)</string>

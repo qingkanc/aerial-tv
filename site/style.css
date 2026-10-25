@@ -64,16 +64,27 @@ h1 {
 .btn.ghost:hover { background: rgba(41,151,255,.1); }
 
 /* tv frame */
-.tv { position: relative; margin: 64px auto 0; max-width: 1040px; }
+.tv { position: relative; margin: 64px auto 0; max-width: 1040px; container-type: inline-size; }
 .tv .screen {
   position: relative; border-radius: 14px; overflow: hidden; background: #000;
   box-shadow: 0 0 0 10px #111, 0 0 0 11px #2a2a2d, 0 40px 120px -20px rgba(41,151,255,.25), 0 30px 80px rgba(0,0,0,.8);
 }
-.tv .screen img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+/* The screen is 16:9, rounded down to whole pixels. At a fractional height (201.38px on a phone)
+   iPhone Safari drew the sliding Aerial shot a device pixel short while it moved, so the stock
+   launcher showed as a line along the bottom, and the shot jumped down when the wipe ended. */
+.tv .screen { aspect-ratio: 16 / 9; height: round(down, 100cqw * 9 / 16, 1px); }
+.tv .screen img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 .compare { --x: 0%; cursor: ew-resize; touch-action: pan-y; user-select: none; -webkit-user-select: none; outline: none; }
 .compare img { -webkit-user-drag: none; pointer-events: none; }
-.compare .before { position: absolute; inset: 0; height: 100%; clip-path: inset(0 0 0 var(--x)); }
-.compare .divider { transition: opacity .25s ease; position: absolute; top: 0; bottom: 0; left: var(--x); width: 2px; margin-left: -1px; background: rgba(255,255,255,.9); box-shadow: 0 0 18px rgba(0,0,0,.5); }
+/* Aerial's shot lies on top, in a window that slides in from the left while the shot inside slides
+   back, so the shot stays put and grows from the left edge. The stock shot underneath is never cut:
+   iPhone Safari let the last pixel row of a cut image (clip-path, or a sliding window) show past the
+   cut, so whatever it leaks now lands under Aerial's shot, not over it. */
+.compare .after { position: absolute; inset: 0 0 -1px; z-index: 1; overflow: hidden; transform: translateX(calc(var(--x) - 100%)); }
+.compare .after img { transform: translateX(calc(100% - var(--x))); }
+/* Wiped all the way to Aerial: drop the stock shot altogether. */
+.compare.done .before { display: none; }
+.compare .divider { transition: opacity .25s ease; position: absolute; z-index: 2; top: 0; bottom: 0; left: var(--x); width: 2px; margin-left: -1px; background: rgba(255,255,255,.9); box-shadow: 0 0 18px rgba(0,0,0,.5); }
 .compare .knob {
   position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
   display: grid; place-items: center; color: #111; background: rgba(255,255,255,.92);

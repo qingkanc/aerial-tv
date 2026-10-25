@@ -51,6 +51,8 @@ class TileArt(
      * one textured draw per frame, which matters on TV chips.
      */
     val backdrop: ImageBitmap,
+    /** A stand-in in the app's color while its picture is still being read (see AppCatalog.load). */
+    val placeholder: Boolean = false,
 )
 
 /** Firmware apps Aerial draws its own tile for, each in the color that tells the kind apart. */

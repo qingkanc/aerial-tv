@@ -10,7 +10,6 @@ import android.graphics.Matrix
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -68,6 +67,7 @@ import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.wallpaper.Images
 import app.orchard.tv.system.NetKind
 import app.orchard.tv.system.NetworkStatus
+import app.orchard.tv.ui.components.Dissolve
 import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.frozen
 import app.orchard.tv.ui.components.glassEdge
@@ -222,12 +222,16 @@ fun HomeBackground(
     }
 }
 
-/** The sharp picture and the grid's frosted one, crossfading when the wallpaper changes. */
+/**
+ * The sharp picture and the grid's frosted one. A new wallpaper fades in over the old, which stays
+ * whole beneath it: crossfaded, the screen dimmed half-way through.
+ */
 @Composable
 private fun Pictures(backdrop: ImageBitmap?, frosted: ImageBitmap?, scroll: () -> Float, collapse: Float, cover: () -> Float) {
-    Crossfade(
+    Dissolve(
         targetState = backdrop to frosted,
-        animationSpec = tween(450, easing = Motion.EaseOut),
+        durationMs = 450,
+        easing = Motion.EaseOut,
         modifier = Modifier.fillMaxSize(),
         label = "ambient",
     ) { (bmp, frost) ->
@@ -503,7 +507,7 @@ fun CornerClock(now: LocalDateTime, modifier: Modifier = Modifier, toSaver: () -
     val shadow = Shadow(Color.Black.copy(alpha = 0.5f), blurRadius = 8f)
     Row(modifier.height(34.dp), verticalAlignment = Alignment.CenterVertically) {
         BasicText(
-            timeText(now), style = Type.Title.copy(color = dim, shadow = shadow),
+            timeText(now), style = Type.SmallClock.copy(fontSize = Type.Title.fontSize, color = dim, shadow = shadow),
             modifier = Modifier.toSaverClock(toSaver, Type.Title.fontSize, Type.Title.fontSize.value.dp * CAP_TOP),
         )
         Weather.now?.let { w ->

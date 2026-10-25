@@ -3,9 +3,9 @@
 ## 分支和基线
 
 - 仓库：`https://github.com/qingkanc/aerial-tv.git`。
-- `mitv-custom`：电视上实际使用的定制代码；本次基于上游正式标签 `v1.46`，提交 `f4e95ff`。
+- `mitv-custom`：电视上实际使用的定制代码；本地代码已合并上游正式标签 `v1.48`，提交 `cc4c622`；尚未安装电视。
 - `main`：保持上传前的上游代码状态，本次未改动。
-- 当前安装版本：`1.46-mitv`，`versionCode = 49`，standard release。
+- 上次真机验证的安装版本：`1.46-mitv`，`versionCode = 49`，standard release。
 - 上游：`https://github.com/pengchujin/aerial-tv.git`。后续优先合并正式发布标签，避免把未发布主分支当作已验证版本。
 
 ## 必须保留的定制
@@ -78,3 +78,11 @@ adb -s "$TV_SERIAL" shell am start -W -n com.thunderstone.idun.dev/app.orchard.t
 - 手机配置接口中的壁纸、屏保、焦点样式不变，应用集合保留；新版手机设置页可访问。
 - 航拍屏保预览正常播放，返回后恢复桌面。固件的标准自动 Dream 限制未改变。
 - 本次验证应用冷启动，未做整机重启；未来节气/节日通过日期回归测试验证，未修改电视时间。
+
+## 2026-10-25 本地升级 v1.48
+
+- 本地构建版本为 `1.48-mitv`，`versionCode = 56`；保留定制包名、签名配置、同步账号类型、农历和日期/玻璃绘制缓存优化。
+- 移除尚未上机的控制中心玻璃增强（高亮边缘和冷暖内倒角），采用上游普通玻璃、300dp 面板和动效，保留上游流畅模式。
+- 合并前的未提交改动另存于本机备份；除玻璃增强实现及其专属对照夹具外，其余改动保持未提交。控制中心浅色壁纸、导航及重开回归继续保留。
+- 本次只做本地验证，不安装电视；上游真机性能数据不代表本机已验收。
+- 本地验证：JDK 17 下 `assembleStandardRelease assembleGuardRelease testStandardReleaseUnitTest` 通过，两个 release 变体的 lintVital 通过；补充完整/流畅模式及主页空闲预热后的控制中心导航、关闭重开像素一致性回归后，再次运行全部 35 项测试，0 失败、0 错误、0 跳过。standard APK 包名、版本 56 / 1.48-mitv 和签名（`eff67c2c…9ae7c25`）核对通过。真实电视性能、启动和遥控器操作未验证。

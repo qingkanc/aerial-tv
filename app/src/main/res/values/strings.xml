@@ -154,6 +154,12 @@
     <string name="st_focus_standard">Standard</string>
     <string name="st_focus_high_hint">A white frame around the selected app, easy to spot from across the room.</string>
     <string name="st_focus_standard_hint">As on Apple TV out of the box: the selected app only lifts.</string>
+    <string name="st_effects">Effects</string>
+    <string name="st_effects_auto">Auto</string>
+    <string name="st_effects_full">Full</string>
+    <string name="st_effects_lite">Lite</string>
+    <string name="st_effects_hint">Lite draws plain panels and the selected app without its sheen, and keeps the screen at 60 Hz: for TVs that stutter.</string>
+    <string name="st_effects_auto_lite_hint">This TV has little memory or an older Android, so Auto uses Lite.</string>
     <string name="cc_inputs_settings">Input Settings</string>
     <string name="cc_inputs_pin">Show on Home (any number)</string>
     <string name="cc_inputs_boot">When the TV Turns On (one)</string>

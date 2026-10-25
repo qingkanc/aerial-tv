@@ -98,9 +98,14 @@ Run these in PowerShell, with the adb from step 1. Everything inside `adb shell 
    adb shell cmd notification allow_listener app.orchard.tv/app.orchard.tv.guard.RevivalListener
    adb shell appops set app.orchard.tv APP_AUTO_START allow
    adb shell appops set app.orchard.tv APP_ASSOC_START allow
+   ```
+   The two `APP_*` app ops exist only on TCL; elsewhere they fail, which is fine.
+
+   Start Aerial once, wait 5 seconds, then compile it (takes up to a minute and makes Aerial run smoothly on the TV; on some TVs the compile only works after Aerial has started once):
+   ```
+   adb shell am start -W -n app.orchard.tv/.MainActivity
    adb shell cmd package compile -m speed -f app.orchard.tv
    ```
-   The two `APP_*` app ops exist only on TCL; elsewhere they fail, which is fine. `compile` takes up to a minute and makes Aerial run smoothly on the TV.
 
 4. Screensaver: run `adb shell settings get secure screensaver_enabled`. If it prints `1`, also run:
    ```

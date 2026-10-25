@@ -95,7 +95,14 @@ site/update/                        电视升级页二维码打开的页面：�
 - 模糊（`BlurEffect`）只在控制中心 / 隐藏 App 面板打开时用。
 - 面板（控制中心、个性化、长按菜单、隐藏的 App、家长密码、移动提示）都用 `Modifier.liquidGlass`：同样取模糊版壁纸里面板身后的那一块，压到一半亮度保证白字可读，再加玻璃边缘。每个面板只填一次自己的面积，和原来的纯色一样；「跟随 App」模式没有模糊版壁纸，退回原来的深色 `Palette.Glass`。
 - 加任何全屏效果前，先测：`adb shell dumpsys gfxinfo app.orchard.tv framestats`。
-- 一定要装 release 版，并执行 `cmd package compile -m speed -f app.orchard.tv`。debug 版的 Compose 在电视上明显卡顿。
+- 一定要装 release 版，并执行 `cmd package compile -m speed -f app.orchard.tv`。debug 版的 Compose 在电视上明显卡顿。**要在 Aerial 启动过一次之后再编译**：小米 MFTR0（Android 14）把 `speed` 当成 `speed-profile`，装完立刻编译时还没有 profile，结果还是 `verify`（解释执行）。`install.sh` 已经改成先启动、等 5 秒再编译。
+- **Baseline Profile**（`app/src/main/baseline-prof.txt`）：Aerial 自己的代码和 Compose 全部标成热点。不经过 `install.sh` 的安装（控制中心升级、多屏互动推送、U 盘）不会立刻编译，系统要等后台编译任务（空闲且充电时）才按它编译；小米上实测不会在安装时用 APK 里的 profile（`assets/dexopt/` 和 `assets/art-profile/` 都试过）。编译前后：首页磁贴出来 0.8 秒 → 0.4 秒。诊断报告的 `Compiled` 一行：Android 9+（11 除外）显示 profile 状态，`odex` 大小在所有版本上都能看出编译了没有（只 verify 时几百 KB，`speed` 时约 11 MB）。
+- **冷启动不在主线程做的事**：App 列表和信号源同时查（`HomeViewModel.reload`）；磁贴面（连续圆角 + 描边的位图）由 `TileFaces.prepare` 在后台按 5 个一批做，做好前磁贴先画原图（图层的圆角裁剪已经很接近），以前第一次绘制时整页一起在主线程做，小米上约 120 ms；第一排的聚焦尺寸随后也在后台做；字体（Inter 和系统的后备字体链）由 `FontWarmup` 在 `onCreate` 时在后台加载，以前第一次量文字时在主线程做，58 ms → 4 ms。DiagLog 的 `apps in` 一行把耗时拆成 wait / queries / tiles / main。
+- **冷启动只先读前几排的磁贴**：磁贴缓存是每个 App 一个文件（PNG），52 个 App 共 23 MB 像素，TCL MT5879 上解码要 4 个线程合计 1.4–1.9 秒 CPU，墙钟 500–680 ms（改存压缩的原始像素只省约 10%，文件大 1.7 倍，没采用）。现在冷启动只把按保存顺序的前 13 个磁贴（文件夹算一个，读它里面的 App）整张读出来（`LayoutStore.leading`），其余只读文件开头的名字和颜色，先画成纯色占位（`TileArt.placeholder`，在屏幕外），首页出来后紧接着在后台全读（DiagLog「N more tiles in … ms」）。占位个数要从这次加载自己的列表里数：冷启动后按主页键，守护会再起一个 MainActivity，两个首页同时加载，起初把个数记在 `AppCatalog` 里，另一个首页的第二遍把它清零，这个首页就不补读，占位一直留在网格里（小米 MFTR0 上 3 次复现 2 次，改后 4 次都正常）。新装、升级后第一次启动（缓存键不匹配）照旧全读。TCL：tiles 约 530 → 165 ms，首页出来 688–790 → 360–600 ms（多数约 370 ms）。
+- **控制中心预热**：每个进程一次，首页空闲 3 秒后把面板以 1% 不透明度画 3 帧、不拿焦点（`HomeScreen` 的 `ccWarm`），第一次打开就不再是第一次绘制。小米第一次打开帧耗时中位数 58 → 33 ms（最慢 95 → 38）；TCL 82 → 14–28 ms（最慢 309 → 36–67）。
+- **效果（流畅模式）**：个性化 → 主屏幕 →「效果：自动 / 完整 / 流畅」（`AerialSettings.effects`）。流畅：面板用纯色（壁纸磨砂图的平均色，按玻璃的压暗算，不透明；不用每帧的离屏层），聚焦磁贴不画高光、视差和阴影，不切到更高刷新率；Android 7 以前控制中心背后的时钟和磁贴随遮罩淡出（那里没有主页截图，#466）。「自动」在低端电视上是流畅（`DeviceClass`：固件 low-RAM 标志、内存小于 1.8 GB、Android 6 及以下、两核及以下），别的是完整。小米和 TCL 都不算低端。
+- **内存**：`onTrimMemory`（RUNNING_LOW 及以上、后台级别，不含每次离开桌面的 UI_HIDDEN）丢掉壁纸缩略图和聚焦尺寸的磁贴面。
+- **诊断报告的 `Frames` 一行**（Android 7+，`FrameStats`，FrameMetrics）：启动 5 秒后的最近 600 帧的中位数、p90、p99、最慢，用户报卡顿时带着自己电视的数字。
 
 ## 磁贴图（TileArt）
 
@@ -146,7 +153,7 @@ Logo 的大小统一：先在 256×256 的采样里找出 Logo 的范围，再�
 
 ## 手机配置（PhoneServer）
 
-NanoHTTPD 监听 8790 端口，路径前缀是 8 位随机令牌（每次打开面板都重新生成，二维码里带着）。只在壁纸面板打开时运行，关闭后再保留 5 分钟。接口：`GET /` 页面、`GET api/state`、`GET thumb/<id>`、`POST api/wallpaper|screensaver|delete`（表单）、`POST api/upload`（multipart，可多张）；`GET tile/<包名>`（磁贴现在的样子）、`POST api/icon`（multipart：`app` 加一张图片）、`POST api/icon/reset`、`POST api/weather/city`（`name`）、`POST api/weather/auto`、`POST api/folder/name`（`id`、`name`，Home 活着时经 `AppCatalog.renameFolder` 改名）。页面底部四个标签（壁纸、屏保、主屏幕、更多），操作单张照片或单个磁贴用底部弹层。页面在 `assets/web/index.html`。
+NanoHTTPD 监听 8790 端口，路径前缀是 8 位随机令牌（每次打开面板都重新生成，二维码里带着）。只在壁纸面板打开时运行，关闭后再保留 5 分钟。接口：`GET /` 页面、`GET api/state`、`GET thumb/<id>`、`POST api/wallpaper|screensaver|delete`（表单）、`POST api/upload`（multipart，可多张）；`GET tile/<包名>`（磁贴现在的样子）、`POST api/icon`（multipart：`app` 加一张图片）、`POST api/icon/reset`、`POST api/weather/city`（`name`）、`POST api/weather/auto`、`POST api/folder/name`（`id`、`name`，Home 活着时经 `AppCatalog.renameFolder` 改名）、`POST api/app/name`（`app`、`name`：App 存进 `AppNames`，信号源存进 `SourceLooks`）、`POST api/source/pin`（`id`、`pinned=1|0`，经 `AppCatalog.pinSource`）、`POST api/layout`（`op` = move / movein / hide / unhide / folder / unfolder / ungroup，加 `key`、`target`、`folder`，经 `AppCatalog.layout`；家长密码开着时不给 unhide，`api/state` 的 `layout.hidden` 也是空的）。页面底部四个标签（壁纸、屏保、主屏幕、更多），操作单张照片或单个磁贴用底部弹层。页面在 `assets/web/index.html`。
 
 - **自定义图标**：图片裁成 16:9、1280×720 存成 PNG，有这张图的 App 直接当横幅画（`AppCatalog.entry`，排在系统 App 自绘磁贴前面）。磁贴缓存的键里带着图片的修改时间；`CustomIcons.version` 变化时 `HomeViewModel` 重新加载 App。电视上的长按菜单里有「恢复默认图标」。包名必须是已安装的 App，同时也保证它是一个合法的文件名。
 - **文件夹**（像 tvOS）：长按菜单「移到文件夹」→ 选已有的文件夹或「新建文件夹」。新文件夹占这个 App 原来的位置，名字按 App 自动起（系统 App 叫「系统应用」，其他叫「文件夹」，重名加数字），可在文件夹的长按菜单里从预设名字（`folder_names`）中改；电视上没有好用的输入法，所以不做自由输入。文件夹在 `LayoutStore` 的排序里占一个 `folder:<id>` 键，里面的 App 不再出现在排序里；存成 JSON（`folders`），只记包名。文件夹磁贴是 `folderEntry`，画面是 `TileArtFactory.forFolder`：半透明底板上三乘三排最多九个 App 的缩略图，只在里面的 App 变了时重画。打开文件夹是全屏的 `FolderView`：主屏模糊变暗，上面是名字和同样大小的磁贴；在里面长按，菜单第一项是「移出文件夹」（放到文件夹后面）而不是「移动」，关掉菜单回到文件夹。最后一个 App 移出后文件夹自动消失；「解散文件夹」把里面的 App 按顺序放回文件夹的位置。浮层（菜单、文件夹）关闭时，Compose 会先把焦点交给浮层下面的磁贴，所以打开时记下要回到哪个磁贴（`focusAfterOverlay`、`FolderView` 的 `menuKey`）。小米 MFTR0 上验证过：新建、放入、打开、文件夹里的菜单、重命名、移出、解散，测完排列和原来一样。

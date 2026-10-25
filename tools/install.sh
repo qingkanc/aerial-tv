@@ -45,8 +45,14 @@ fi
 case "$TV" in *:*) SERIAL="$TV" ;; *) SERIAL="$TV:5555" ;; esac
 export ANDROID_SERIAL="$SERIAL"
 adb connect "$SERIAL" >/dev/null
-if [ "$(adb get-state 2>/dev/null)" != device ]; then
-  echo "The TV did not accept the connection. Accept \"Allow USB debugging?\" on the TV, then run again." >&2
+STATE=$(adb get-state 2>&1 || true)
+if [ "$STATE" != device ]; then
+  case "$STATE" in
+    *unauthorized*) echo "The TV is asking \"Allow USB debugging?\". Choose Allow (and Always allow) on the TV, then run again." ;;
+    # Android 11+ TVs with only wireless debugging use a TLS port of their own and refuse an
+    # unpaired computer's certificate (TCL 85T7L Ultra, issue #480).
+    *) echo "Could not connect to $SERIAL. Check that ADB debugging is on and the IP is right. A TV that offers only wireless debugging (Android 11+) needs pairing first: adb pair <IP>:<pairing port> with the code the TV shows, then run again with TV=<IP>:<port the TV shows>." ;;
+  esac >&2
   exit 1
 fi
 
@@ -199,8 +205,6 @@ if ! adb shell dumpsys notification 2>/dev/null | grep -q "$PKG/$PKG.guard.Reviv
   echo "short standby the TV's launcher can show for up to a minute. Keep auto-sync on. If Home ever stays" >&2
   echo "on the TV's launcher: TV=$TV $0 repair" >&2
 fi
-# Compose runs much smoother ahead-of-time compiled on TV chips.
-adb shell cmd package compile -m speed -f "$PKG" >/dev/null 2>&1 || true
 # TVs on Android's standard screensaver (TCL's carries a membership upsell) get Aerial's instead,
 # so it also starts while another app sits idle. Xiaomi uses its own; Aerial covers it from Home.
 if [ "$(adb shell settings get secure screensaver_enabled | tr -d '\r')" = 1 ]; then
@@ -223,6 +227,13 @@ if ! adb shell am start -W -n "$PKG/.MainActivity" | grep -q "Status: ok"; then
   echo "Aerial did not start; Home was left untouched." >&2
   exit 1
 fi
+
+# Compose runs much smoother ahead-of-time compiled on TV chips: Home's tiles show in about half the
+# time. After Aerial's first start, not before: some firmwares compile "speed" as "speed-profile"
+# (Xiaomi MiTV-MFTR0, Android 14), which needs the profile Aerial writes as it starts; compiled
+# straight after the install it was left interpreted ("verify").
+sleep 5
+adb shell cmd package compile -m speed -f "$PKG" >/dev/null 2>&1 || true
 
 resolve_home() {
   adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME \

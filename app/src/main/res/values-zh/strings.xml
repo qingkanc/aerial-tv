@@ -153,6 +153,12 @@
     <string name="st_focus_standard">标准</string>
     <string name="st_focus_high_hint">选中的 App 外面加一圈白色描边，离得远也看得清。</string>
     <string name="st_focus_standard_hint">与 Apple TV 默认一致：选中的 App 只放大浮起。</string>
+    <string name="st_effects">效果</string>
+    <string name="st_effects_auto">自动</string>
+    <string name="st_effects_full">完整</string>
+    <string name="st_effects_lite">流畅</string>
+    <string name="st_effects_hint">流畅：面板用纯色，选中的 App 不加高光和视差，屏幕保持 60Hz，给会卡顿的电视用。</string>
+    <string name="st_effects_auto_lite_hint">这台电视内存较小或系统较旧，「自动」用的是流畅。</string>
     <string name="cc_inputs_settings">信号源设置</string>
     <string name="cc_inputs_pin">显示在主屏幕（可多选）</string>
     <string name="cc_inputs_boot">开机时打开（选一个）</string>

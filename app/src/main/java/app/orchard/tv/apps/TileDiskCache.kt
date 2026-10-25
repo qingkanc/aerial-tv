@@ -68,6 +68,18 @@ object TileDiskCache {
         }.onFailure { Log.w(TAG, "could not read the kept tile of $pkg", it) }.getOrNull()
     }
 
+    /** Only the label and color kept for [pkg] under [key], or null: the few bytes at the file's start. */
+    fun readHeader(pkg: String, key: String): Pair<String, Color>? {
+        if (!::dir.isInitialized) return null
+        val f = file(pkg).takeIf { it.exists() } ?: return null
+        return runCatching {
+            DataInputStream(f.inputStream().buffered(512)).use { input ->
+                if (input.readUTF() != key) return null
+                input.readUTF() to Color(input.readInt())
+            }
+        }.getOrNull()
+    }
+
     /** Keeps [art] for the next start, in the background. */
     fun write(pkg: String, key: String, label: String, art: TileArt) {
         if (!::dir.isInitialized) return

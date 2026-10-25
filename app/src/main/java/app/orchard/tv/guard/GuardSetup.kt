@@ -42,6 +42,17 @@ object GuardSetup {
 
     private const val REVIVAL_WINDOW_MS = 10 * 60 * 1000L
     private const val KEY_KEEP_ADB = "keep_adb"
+
+    /** When [ensureAdbListening] may still act: only boot shows the lying setting (issue #454). */
+    private const val ADB_BOOT_WINDOW_MS = 3 * 60_000L
+    private val adbDanceLock = Any()
+    @Volatile private var adbDancing = false
+    /** Once per process, which within the boot window is once or twice per boot. */
+    @Volatile private var adbDanced = false
+
+    /** Test hook: probe another port to watch the toggle without closing a working ADB link. */
+    @Volatile var adbProbePort = 5555
+
     private const val KEY_OWN_SCREENSAVER = "own_screensaver"
     private const val KEY_HOME_IN_FRONT = "home_in_front"
     private const val KEY_INSTALLER_OPENED = "installer_opened_at"
@@ -154,11 +165,24 @@ object GuardSetup {
         // Counting those, a few standbys in a row made the guard leave PatchWall in front at wake.
         // Not getSystemService(Class): that is Android 6.0, and LeTV and old VIDAA TVs revive on 5.x.
         if (context.getSystemService<PowerManager>()?.isInteractive == false) return
+        // One stop, one count: the sync framework and the notification listener both bring the
+        // same process back, a second apart. Nor is starting at power-on a stop. On Xiaomi
+        // MiTV-ASTP0 (Android 9) the boot and the first wake counted three, and PatchWall stayed
+        // in front after that wake (issue #470). Nor is an update installed over Aerial.
+        if (revivalNoted || SystemClock.elapsedRealtime() < BOOT_START_MS) return
+        revivalNoted = true
+        val updatedAt = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime }.getOrDefault(0L)
+        if (System.currentTimeMillis() - updatedAt in 0..BOOT_START_MS) return
         val now = System.currentTimeMillis()
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val recent = recentRevivals(context, now) + now
         prefs.edit().putString(KEY_REVIVALS, recent.joinToString(",")).apply()
     }
+
+    /** Whether this process has counted itself as revived; see noteRevival. */
+    @Volatile
+    private var revivalNoted = false
+    private const val BOOT_START_MS = 2 * 60 * 1000L
 
     /** Whether the firmware has stopped Aerial three times or more in the last ten minutes. */
     fun revivedOften(context: Context): Boolean = recentRevivals(context, System.currentTimeMillis()).size >= 3
@@ -191,14 +215,61 @@ object GuardSetup {
             context.getSystemService(UserManager::class.java).isUserUnlocked
 
     fun ensureAdb(context: Context) {
+        if (adbDancing) return // the toggle below writes a 0 on purpose; nothing may undo it
         if (!isUserUnlocked(context) || !keepAdb(context)) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_SECURE_SETTINGS) != PackageManager.PERMISSION_GRANTED) return
         val resolver = context.contentResolver
-        if (Settings.Global.getInt(resolver, Settings.Global.ADB_ENABLED, 0) == 1) return
-        runCatching {
-            Settings.Global.putInt(resolver, Settings.Global.ADB_ENABLED, 1)
-            Log.i(TAG, "ADB debugging had been switched off; turned it back on")
-        }.onFailure { Log.w(TAG, "could not turn ADB back on", it) }
+        if (Settings.Global.getInt(resolver, Settings.Global.ADB_ENABLED, 0) == 0) {
+            runCatching {
+                Settings.Global.putInt(resolver, Settings.Global.ADB_ENABLED, 1)
+                Log.i(TAG, "ADB debugging had been switched off; turned it back on")
+            }.onFailure { Log.w(TAG, "could not turn ADB back on", it) }
+            return
+        }
+        ensureAdbListening(context)
+    }
+
+    /**
+     * adb_enabled=1 does not mean adbd listens: after a reboot the MiTV4-ANSM0 firmware
+     * (Android 6) left adbd out of TCP mode, and only a 0→1 transition of the setting brought
+     * it back (issue #454) — Aerial writing 1 over an unchanged 1 restarts nothing. Probe the
+     * port, and when it is closed walk the setting through 0 and back. Only in the first
+     * minutes after a boot, and once: that is when the setting can lie; a TV used over USB
+     * debugging also has the port closed, by choice. Up to Android 10: from 11 network ADB is
+     * mostly wireless debugging on a port of its own, 5555 is closed by design, and switching
+     * ADB off ends wireless debugging too.
+     */
+    private fun ensureAdbListening(context: Context) {
+        if (adbDancing || adbDanced || Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return
+        if (SystemClock.elapsedRealtime() > ADB_BOOT_WINDOW_MS) return
+        Thread {
+            if (adbdListens(adbProbePort)) return@Thread
+            synchronized(adbDanceLock) {
+                if (adbDanced || SystemClock.elapsedRealtime() > ADB_BOOT_WINDOW_MS) return@Thread
+                adbDanced = true
+                adbDancing = true
+                try {
+                    runCatching {
+                        // The observer in HomeGuardService sees the 0 and would put the 1 back
+                        // at once; adbDancing holds it off until the 0 has done its work.
+                        Settings.Global.putInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0)
+                        Thread.sleep(1_000)
+                        Settings.Global.putInt(context.contentResolver, Settings.Global.ADB_ENABLED, 1)
+                        Log.i(TAG, "adb_enabled was on but adbd was not listening; toggled it to restart it")
+                    }.onFailure { Log.w(TAG, "could not toggle ADB debugging", it) }
+                } finally {
+                    adbDancing = false
+                }
+            }
+        }.apply { isDaemon = true }.start()
+    }
+
+    /** adbd answering on the TV itself; a refusal means it is not in TCP mode. */
+    internal fun adbdListens(port: Int): Boolean = try {
+        java.net.Socket().use { it.connect(java.net.InetSocketAddress("127.0.0.1", port), 400) }
+        true
+    } catch (_: Exception) {
+        false
     }
 
     /**
