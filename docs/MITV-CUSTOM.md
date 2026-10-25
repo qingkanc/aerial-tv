@@ -3,9 +3,9 @@
 ## 分支和基线
 
 - 仓库：`https://github.com/qingkanc/aerial-tv.git`。
-- `mitv-custom`：本地正在整合上游正式标签 `v1.50`，提交 `117ca4e`，构建版本 `1.50-mitv / 58`；尚未安装电视。2026-10-25 电视已安装包含布局修复的 `8814793` 构建。
+- `mitv-custom`：已合并上游正式标签 `v1.50`（`117ca4e`），合并提交 `1e359d1`；2026-10-25 已覆盖安装 `1.50-mitv / 58`。
 - `main`：保持上传前的上游代码状态，本次未改动。
-- 当前安装版本：`1.48-mitv`，`versionCode = 56`，standard release；基础显示与 Home 返回已核验，重启/待机尚未验收。
+- 当前安装版本：`1.50-mitv`，`versionCode = 58`，standard release；基础显示与 Home 返回已核验，重启/待机尚未验收。
 - 上游：`https://github.com/pengchujin/aerial-tv.git`。后续优先合并正式发布标签，避免把未发布主分支当作已验证版本。
 
 ## 必须保留的定制
@@ -20,7 +20,7 @@
 
 上表 Kotlin 路径相对 `app/src/main/java/app/orchard/tv/`，资源相对 `app/src/main/`。
 
-本地 v1.50 验证：两个 release 构建、lintVital 及 31 项测试通过。构建使用 `ANDROID_USER_HOME=local/android-user`，standard APK 包名、版本 58 / 1.50-mitv 与原签名已核对。未安装电视，尚未进行本轮真机验收。
+本地 v1.50 验证：两个 release 构建、lintVital 及 31 项测试通过。构建使用 `ANDROID_USER_HOME=local/android-user`，standard APK 包名、版本 58 / 1.50-mitv 与原签名已核对。已安装电视，验收范围见下文。
 
 这台小米通过现有定制包身份与系统默认 HOME 设置直接进入 Aerial，不依赖无障碍桌面守护。升级时保留包名、MainActivity 类名、原签名和已有授权，不停用小米原桌面，不自动启用额外守护。仅改 namespace 或版本名不能代替 applicationId 的保留。
 
@@ -65,7 +65,7 @@ adb -s "$TV_SERIAL" shell am start -W -n com.thunderstone.idun.dev/app.orchard.t
 1. 从当前 `mitv-custom` 建立升级分支，保持已有工作区改动安全。
 2. 首次配置上游远端：`git remote add upstream https://github.com/pengchujin/aerial-tv.git`；已有时直接使用。执行 `git fetch upstream --tags`，核对 GitHub 正式 Release 对应标签。
 3. 在升级分支执行 `git merge <正式发布标签>`，解决冲突。重点检查 Gradle 中包名与版本号、HomeChrome 中上游农历和时钟刷新、账号类型 XML；不要整文件覆盖上游的新实现。
-4. 保留 `-mitv` 版本名后缀，versionCode 必须大于电视当前值（当前 56）。核对上游是否改变偏好、排序或壁纸数据格式。
+4. 保留 `-mitv` 版本名后缀，versionCode 必须大于电视当前值（当前 58）。核对上游是否改变偏好、排序或壁纸数据格式。
 5. 完成 release 构建和回归，核对签名，备份旧 APK 并记录当前配置后覆盖安装。
 6. 真机检查冷启动、Home 返回、壁纸与应用顺序、农历显示、控制中心、手机设置页和屏保播放/退出；涉及开机路径变更时另做整机重启验证。
 7. 验证通过后合并回 `mitv-custom` 并推送，更新本文基线和验证记录。
@@ -96,3 +96,12 @@ adb -s "$TV_SERIAL" shell am start -W -n com.thunderstone.idun.dev/app.orchard.t
 - 已执行规定的 `speed` 编译命令；固件最终报告实际编译过滤器为 `speed-profile`，没有改写系统编译属性。
 - 面板底层模式为 3840×2160@60Hz，但系统 `config_maxUiWidth=1920`，DisplayManager、应用窗口和界面合成空间均为 1920×1080。本次未修改分辨率；系统是否允许原生 4K UI 尚待进一步验证。
 - 安装包备份、签名核对、截图和原始输出保存在本机 `local/artifacts/aerial-tv/upgrade-1.48/`。
+
+## 2026-10-25 v1.50 真机覆盖安装
+
+- `1e359d1` 已推送至 `origin/mitv-custom`；MiTV-MFFU0 同包名同签名覆盖升级至 `1.50-mitv / 58`，首次安装时间保持不变。
+- 截图核对原壁纸、首排顺序、大时钟和天气城市保留；大时钟显示上游农历一次，控制中心只显示公历，版本显示 1.50。
+- 从系统设置注入 HOME 返回 Aerial；默认 HOME、无障碍、Dream 组件及停用包清单与安装前一致。未清空数据、卸载应用或修改系统接管设置。
+- 执行 `cmd package compile -m speed -f`，固件实际编译过滤器为 `speed-profile`（PERFORMED）。当前崩溃缓冲未发现本包崩溃。
+- 未做实体遥控器、整机重启、待机唤醒、手机页及新增视频/信号源壁纸验收。
+- 旧 APK、截图和原始输出保存在本机 `local/artifacts/aerial-tv/upgrade-1.50/`。
