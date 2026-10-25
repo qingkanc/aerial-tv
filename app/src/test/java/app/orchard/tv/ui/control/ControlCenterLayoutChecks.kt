@@ -1,5 +1,6 @@
 package app.orchard.tv.ui.control
 
+import kotlinx.coroutines.launch
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -21,6 +22,8 @@ import androidx.compose.ui.unit.Density
 import androidx.lifecycle.ViewModelProvider
 import app.orchard.tv.CcPage
 import app.orchard.tv.HomeViewModel
+import app.orchard.tv.ui.home.Lunar
+import app.orchard.tv.ui.home.ShelfClock
 import app.orchard.tv.Overlay
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.settings.Effects
@@ -64,8 +67,13 @@ internal object ControlCenterLayoutChecks {
         ReflectionHelpers.getField<MutableState<NetworkStatus>>(vm, "network\$delegate").value = NetworkStatus(NetKind.Wifi, ssid)
         vm.overlay = Overlay.ControlCenter()
         val bitmap = Bitmap.createBitmap(1920, 1080, Bitmap.Config.ARGB_8888)
+        // Use the same explicit frame clock as the Home rendering regression.
+        val renderClock = androidx.compose.runtime.BroadcastFrameClock()
+        val renderScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main.immediate + renderClock)
+        val recomposer = androidx.compose.runtime.Recomposer(renderScope.coroutineContext)
+        val rendering = renderScope.launch { recomposer.runRecomposeAndApplyChanges() }
         try {
-            activity.setContent {
+            activity.setContent(parent = recomposer) {
                 CompositionLocalProvider(LocalDensity provides Density(2f)) {
                     val overlay = vm.overlay as? Overlay.ControlCenter
                     ControlCenter(overlay != null, overlay?.page ?: CcPage.Main, vm, now,
@@ -75,6 +83,8 @@ internal object ControlCenterLayoutChecks {
             val view = activity.window.decorView
             fun settle() {
                 repeat(60) {
+                    androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+                    renderClock.sendFrame(android.os.SystemClock.uptimeMillis() * 1_000_000)
                     shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(16))
                     view.measure(View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY))
                     view.layout(0, 0, 1920, 1080)
@@ -102,14 +112,15 @@ internal object ControlCenterLayoutChecks {
                 assertTrue(node.config[SemanticsActions.GetTextLayoutResult].action!!.invoke(results))
                 return results.single()
             }
-            val date = nodes.single { text(it).contains("农历") }
+            val date = nodes.single { text(it).contains("星期") }
+            assertFalse("Control Center follows upstream without a lunar suffix", text(date).contains("农历"))
+            assertFalse("Control Center must not append the large clock's lunar date",
+                text(date).contains(checkNotNull(Lunar.text(now.toLocalDate()))))
             val wifi = nodes.single { text(it) == ssid }
             val clock = nodes.single { text(it) == "23:59" }
             println("$label date=${text(date)} lines=${layout(date).lineCount} bounds=${date.boundsInRoot}")
             assertTrue("$label: Wi-Fi must not squeeze the calendar into its own column",
                 date.boundsInRoot.top >= wifi.boundsInRoot.bottom)
-            if (now.toLocalDate().toString() == "2026-03-20") assertTrue(text(date).contains("春分 · 龙头节"))
-            if (now.toLocalDate().toString() == "2027-10-08") assertTrue(text(date).contains("寒露 · 重阳节"))
             assertTrue("$label: date needs the panel width, at most two lines", layout(date).lineCount <= 2)
             assertFalse("$label: date must not overflow", layout(date).hasVisualOverflow)
             assertEquals("$label: clock must stay on one line", 1, layout(clock).lineCount)
@@ -152,7 +163,18 @@ internal object ControlCenterLayoutChecks {
                 settle()
                 assertEquals(Overlay.ControlCenter(), vm.overlay)
             } finally { first.recycle() }
+            activity.setContent(parent = recomposer) {
+                CompositionLocalProvider(LocalDensity provides Density(2f)) { ShelfClock(now) }
+            }
+            settle()
+            val clockOwner = ReflectionHelpers.callInstanceMethod<SemanticsOwner>(checkNotNull(composeRoot(view)), "getSemanticsOwner")
+            val clockDate = texts(clockOwner.unmergedRootSemanticsNode).single { text(it).contains("星期") }
+            val lunar = checkNotNull(Lunar.text(now.toLocalDate()))
+            assertEquals("Large clock must display the upstream lunar date exactly once",
+                1, text(clockDate).windowed(lunar.length).count { it == lunar })
         } finally {
+            recomposer.cancel()
+            rendering.cancel()
             controller.pause().stop().destroy()
             bitmap.recycle()
             available.value = oldAvailable

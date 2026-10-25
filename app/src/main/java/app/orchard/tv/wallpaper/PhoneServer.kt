@@ -68,6 +68,18 @@ class PhoneServer private constructor(private val context: Context, private val 
                     onMain { Wallpapers.chooseScreensaver(mode) }
                     json(state())
                 }
+                session.method == Method.POST && path == "/api/setting" -> {
+                    // The few on/off settings the phone page shows, as Personalize does.
+                    val f = form(session)
+                    val on = f["on"] == "1"
+                    val known = when (f["key"]) {
+                        "wallpaperAlwaysMoves" -> { onMain { AerialSettings.chooseWallpaperAlwaysMoves(on) }; true }
+                        "showWeather" -> { onMain { AerialSettings.chooseShowWeather(on) }; true }
+                        "screensaverClock" -> { onMain { AerialSettings.chooseScreensaverClock(on) }; true }
+                        else -> false
+                    }
+                    json(state().put("saved", known))
+                }
                 session.method == Method.POST && path == "/api/focus" -> {
                     val style = FocusStyle.of(form(session)["style"])
                     onMain { AerialSettings.chooseFocusStyle(style) }
@@ -82,6 +94,7 @@ class PhoneServer private constructor(private val context: Context, private val 
                 session.method == Method.POST && path == "/api/videos/upload" -> video(session)
                 session.method == Method.POST && path == "/api/videos/delete" -> {
                     val removed = ScreensaverVideos.delete(context, form(session)["id"].orEmpty())
+                    if (removed) onMain { Wallpapers.videosChanged() }
                     json(state().put("removed", removed))
                 }
                 path.startsWith("/tile/") -> tile(java.net.URLDecoder.decode(path.removePrefix("/tile/"), "UTF-8"))
@@ -172,6 +185,9 @@ class PhoneServer private constructor(private val context: Context, private val 
                 ScreensaverVideos.all(context).forEach { put(JSONObject().put("id", it.id).put("name", it.name)) }
             })
             .put("focusStyle", AerialSettings.focusStyle.key)
+            .put("wallpaperAlwaysMoves", AerialSettings.wallpaperAlwaysMoves)
+            .put("showWeather", AerialSettings.showWeather)
+            .put("screensaverClock", AerialSettings.screensaverClock)
             .put("wallpapers", list)
             .put("apps", JSONArray().apply {
                 // Pinned inputs first, then apps by the name Home shows. [default] is the name a
@@ -326,6 +342,7 @@ class PhoneServer private constructor(private val context: Context, private val 
         val path = files["video"] ?: return text(Response.Status.BAD_REQUEST, "no video")
         val name = session.parameters["video"]?.firstOrNull().orEmpty()
         val saved = ScreensaverVideos.add(context, File(path), name) != null
+        if (saved) onMain { Wallpapers.videosChanged() }
         return json(state().put("saved", saved))
     }
 

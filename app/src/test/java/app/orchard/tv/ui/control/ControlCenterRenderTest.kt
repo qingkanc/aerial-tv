@@ -1,5 +1,6 @@
 package app.orchard.tv.ui.control
 
+import kotlinx.coroutines.launch
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -26,7 +27,6 @@ import app.orchard.tv.ui.home.HomeScreen
 import app.orchard.tv.wallpaper.Wallpapers
 import java.io.File
 import java.time.Duration
-import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -44,19 +44,19 @@ import org.robolectric.util.ReflectionHelpers
 @Config(sdk = [28], qualifiers = "zh-rCN-w960dp-h540dp-land-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ControlCenterRenderTest {
-    @Test fun smallHomePreparesDateAndPanelRetainsAppearanceAndNavigation() {
-        renderHome(waitForCalendar = true)
-        renderHome(waitForCalendar = true, withWallpaper = true)
-        renderHome(waitForCalendar = true, withWallpaper = true, brightWallpaper = true)
-        renderHome(waitForCalendar = true, withWallpaper = true, effects = Effects.Lite, warmPanel = true)
+    @Test fun panelRetainsAppearanceAndNavigation() {
+        renderHome(waitBeforeOpening = true)
+        renderHome(waitBeforeOpening = true, withWallpaper = true)
+        renderHome(waitBeforeOpening = true, withWallpaper = true, brightWallpaper = true)
+        renderHome(waitBeforeOpening = true, withWallpaper = true, effects = Effects.Lite, warmPanel = true)
         ControlCenterLayoutChecks.verify()
     }
 
-    @Test fun openingImmediatelyStillComputesDate() {
-        renderHome(waitForCalendar = false)
+    @Test fun openingImmediatelyRendersPanel() {
+        renderHome(waitBeforeOpening = false)
     }
 
-    private fun renderHome(waitForCalendar: Boolean, withWallpaper: Boolean = false, brightWallpaper: Boolean = false,
+    private fun renderHome(waitBeforeOpening: Boolean, withWallpaper: Boolean = false, brightWallpaper: Boolean = false,
                            effects: Effects = Effects.Full, warmPanel: Boolean = false) {
         val app = RuntimeEnvironment.getApplication()
         app.getSharedPreferences("settings", 0).edit().putBoolean("setup_offered", true).commit()
@@ -65,9 +65,6 @@ class ControlCenterRenderTest {
         AerialSettings.chooseEffects(effects)
         CustomIcons.init(app)
         SourceLooks.init(app)
-        val calendar = Class.forName("app.orchard.tv.ui.home.LunarDateKt")
-        ReflectionHelpers.setStaticField(calendar, "cachedDate", null)
-        ReflectionHelpers.setStaticField(calendar, "cachedText", null)
         val backdrop = ReflectionHelpers.getField<MutableState<ImageBitmap?>>(Wallpapers, "backdrop\$delegate")
         val frost = ReflectionHelpers.getField<MutableState<ImageBitmap?>>(Wallpapers, "frosted\$delegate")
         val oldBackdrop = backdrop.value
@@ -91,16 +88,23 @@ class ControlCenterRenderTest {
         vm.resumed = warmPanel
         val warmer = Class.forName("app.orchard.tv.ui.home.ControlCenterWarmed")
         ReflectionHelpers.setStaticField(warmer, "done", false)
-        if (!waitForCalendar) vm.overlay = Overlay.ControlCenter()
+        if (!waitBeforeOpening) vm.overlay = Overlay.ControlCenter()
         val bitmap = Bitmap.createBitmap(1920, 1080, Bitmap.Config.ARGB_8888)
+        // Drive Compose frames explicitly: advancing Robolectric's looper alone can leave recomposition idle.
+        val renderClock = androidx.compose.runtime.BroadcastFrameClock()
+        val renderScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main.immediate + renderClock)
+        val recomposer = androidx.compose.runtime.Recomposer(renderScope.coroutineContext)
+        val rendering = renderScope.launch { recomposer.runRecomposeAndApplyChanges() }
         try {
-            activity.setContent {
+            activity.setContent(parent = recomposer) {
                 CompositionLocalProvider(LocalDensity provides Density(2f)) {
                     HomeScreen(vm, { _, _ -> error("Unexpected launch") }, { error("Unexpected system page") }, {}, {}, {})
                 }
             }
             val view = activity.window.decorView
             fun frame() {
+                androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+                renderClock.sendFrame(android.os.SystemClock.uptimeMillis() * 1_000_000)
                 shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(16))
                 view.measure(View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY))
                 view.layout(0, 0, 1920, 1080)
@@ -121,13 +125,8 @@ class ControlCenterRenderTest {
             }
             fun settled() { repeat(60) { frame() } }
             frame()
-            if (waitForCalendar) {
-                // Poll the worker with bounded rendering; no wall-time performance assertion.
-                for (i in 0 until 120) {
-                    if (synchronized(calendar) { ReflectionHelpers.getStaticField<LocalDate?>(calendar, "cachedDate") } == LocalDate.now()) break
-                    frame()
-                }
-                assertEquals(LocalDate.now(), synchronized(calendar) { ReflectionHelpers.getStaticField<LocalDate?>(calendar, "cachedDate") })
+            if (waitBeforeOpening) {
+                settled()
                 assertEquals(Overlay.None, vm.overlay)
             }
             if (warmPanel) {
@@ -143,9 +142,7 @@ class ControlCenterRenderTest {
             vm.overlay = Overlay.ControlCenter()
             settled()
             assertEquals(Overlay.ControlCenter(), vm.overlay)
-            if (!waitForCalendar) {
-                assertEquals(LocalDate.now(), synchronized(calendar) { ReflectionHelpers.getStaticField<LocalDate?>(calendar, "cachedDate") })
-                assertTrue(ReflectionHelpers.getStaticField<String>(calendar, "cachedText").isNotBlank())
+            if (!waitBeforeOpening) {
                 return
             }
             val preview = File("build/reports/control-center/" + when {
@@ -161,7 +158,7 @@ class ControlCenterRenderTest {
                 // The panel takes focus: OK activates Inputs, then Back returns to Main.
                 key(KeyEvent.KEYCODE_DPAD_CENTER)
                 settled()
-                assertEquals(Overlay.ControlCenter(CcPage.Inputs), vm.overlay)
+                assertEquals("wallpaper=$withWallpaper bright=$brightWallpaper warm=$warmPanel", Overlay.ControlCenter(CcPage.Inputs), vm.overlay)
                 activity.onBackPressedDispatcher.onBackPressed()
                 settled()
                 assertEquals(Overlay.ControlCenter(), vm.overlay)
@@ -176,6 +173,8 @@ class ControlCenterRenderTest {
                 first.recycle()
             }
         } finally {
+            recomposer.cancel()
+            rendering.cancel()
             bitmap.recycle()
             controller.pause().stop().destroy()
             backdrop.value = oldBackdrop

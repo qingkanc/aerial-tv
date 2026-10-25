@@ -213,5 +213,15 @@
     <string name="ss_videos_hint">Телефон бетінен MP4 немесе MOV қосыңыз. Интернетсіз ойнатылады; бейне болмаса, фотолар көрсетіледі.</string>
     <string name="ss_system">Жүйелік</string>
     <string name="ss_system_hint">Теледидардың өз экран сақтағышы (мысалы, Xiaomi суреттері). Aerial өзінікін көрсетпейді.</string>
-    <string name="lunar_calendar_date">Ай күнтізбесі: %1$s</string>
+    <string name="wp_videos_note">Телефоннан жіберілген өз бейнелеріңіз: дыбыссыз, бірінен соң бірі. Аэрожиын сияқты қозғалады және ағымдағы кадрда тоқтайды.</string>
+    <string name="wp_source_note">Осы кірістің басты экран артындағы тірі суреті, дыбыссыз; дыбыс үшін кірістің өзін ашыңыз. Төмендегі қолданбаларда күңгірт фонға ауысады. Сурет жоқ кезде қараңғы фон көрінеді.</string>
+    <string name="st_play">Ойнату</string>
+    <string name="st_play_still">Тыныштықта</string>
+    <string name="st_play_always">Әрдайым</string>
+    <string name="st_play_hint">Тыныштықта: жоғарғы қатарда 10 секундтан кейін; кез келген түйме тоқтатады. Әрдайым: түймелер тоқтатпайды, фон сәл күңгірттенеді; төмендегі қолданбаларға өткенде тоқтайды.</string>
+    <string name="ss_show_time">Уақыт</string>
+    <string name="ss_show_time_hint">Аэрожиын және фото экран қорғауыштарындағы уақыт. Экран күйіп қалмас үшін уақыт пен орын атауы анда-санда сәл жылжиды.</string>
+    <string name="input_antenna">Антенна</string>
+    <string name="input_digital">Сандық ТД</string>
+    <string name="st_on">Қосулы</string>
 </resources>

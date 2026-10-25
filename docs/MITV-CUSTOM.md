@@ -3,23 +3,24 @@
 ## 分支和基线
 
 - 仓库：`https://github.com/qingkanc/aerial-tv.git`。
-- `mitv-custom`：电视上实际使用的定制代码；本地代码已合并上游正式标签 `v1.48`，提交 `cc4c622`；尚未安装电视。
+- `mitv-custom`：本地正在整合上游正式标签 `v1.50`，提交 `117ca4e`，构建版本 `1.50-mitv / 58`；尚未安装电视。2026-10-25 电视已安装包含布局修复的 `8814793` 构建。
 - `main`：保持上传前的上游代码状态，本次未改动。
-- 上次真机验证的安装版本：`1.46-mitv`，`versionCode = 49`，standard release。
+- 当前安装版本：`1.48-mitv`，`versionCode = 56`，standard release；基础显示与 Home 返回已核验，重启/待机尚未验收。
 - 上游：`https://github.com/pengchujin/aerial-tv.git`。后续优先合并正式发布标签，避免把未发布主分支当作已验证版本。
 
 ## 必须保留的定制
 
 | 位置 | 用途 |
 | --- | --- |
-| `app/build.gradle.kts` | applicationId 为 `com.thunderstone.idun.dev`；农历库 `cn.6tail:lunar:1.7.7`；定制版本号 |
+| `app/build.gradle.kts` | applicationId 为 `com.thunderstone.idun.dev`；定制版本号 |
 | `guard/RevivalSync.kt`、`res/xml/revival_account.xml`、`res/xml/revival_sync.xml` | 同步账号类型与定制包名一致 |
-| `ui/home/LunarDate.kt` | 离线农历、当日节气与传统节日，支持闰月与大小月除夕 |
-| `ui/home/HomeChrome.kt` | 中文日期追加农历；桌面大时钟与控制中心共用；沿用上游唤醒及校时刷新 |
-| 五种语言的 `strings.xml` | 农历日期资源，占位符一致；非中文界面仍保持上游日期显示 |
-| `LunarDateTest.kt` | 农历、节日、闰月、除夕及全年 24 节气回归 |
+| `ui/control/ControlCenter.kt` | 日期独占网络与时钟下方整行，避免长 SSID 挤压日期 |
 
-上表 Kotlin 路径相对 `app/src/main/java/app/orchard/tv/`，资源相对 `app/src/main/`，测试位于 `app/src/test/java/app/orchard/tv/ui/home/`。
+1.50 起农历采用上游 `Lunar.kt`：中文大时钟显示农历，控制中心不追加农历；移除本地节气、节日、农历依赖及预热缓存。
+
+上表 Kotlin 路径相对 `app/src/main/java/app/orchard/tv/`，资源相对 `app/src/main/`。
+
+本地 v1.50 验证：两个 release 构建、lintVital 及 31 项测试通过。构建使用 `ANDROID_USER_HOME=local/android-user`，standard APK 包名、版本 58 / 1.50-mitv 与原签名已核对。未安装电视，尚未进行本轮真机验收。
 
 这台小米通过现有定制包身份与系统默认 HOME 设置直接进入 Aerial，不依赖无障碍桌面守护。升级时保留包名、MainActivity 类名、原签名和已有授权，不停用小米原桌面，不自动启用额外守护。仅改 namespace 或版本名不能代替 applicationId 的保留。
 
@@ -63,8 +64,8 @@ adb -s "$TV_SERIAL" shell am start -W -n com.thunderstone.idun.dev/app.orchard.t
 
 1. 从当前 `mitv-custom` 建立升级分支，保持已有工作区改动安全。
 2. 首次配置上游远端：`git remote add upstream https://github.com/pengchujin/aerial-tv.git`；已有时直接使用。执行 `git fetch upstream --tags`，核对 GitHub 正式 Release 对应标签。
-3. 在升级分支执行 `git merge <正式发布标签>`，解决冲突。重点检查 Gradle 中包名、农历依赖与版本号，HomeChrome 中日期拼接和时钟刷新，账号类型 XML；不要整文件覆盖上游的新实现。
-4. 保留 `-mitv` 版本名后缀，versionCode 必须大于电视当前值（当前 49）。核对上游是否改变偏好、排序或壁纸数据格式。
+3. 在升级分支执行 `git merge <正式发布标签>`，解决冲突。重点检查 Gradle 中包名与版本号、HomeChrome 中上游农历和时钟刷新、账号类型 XML；不要整文件覆盖上游的新实现。
+4. 保留 `-mitv` 版本名后缀，versionCode 必须大于电视当前值（当前 56）。核对上游是否改变偏好、排序或壁纸数据格式。
 5. 完成 release 构建和回归，核对签名，备份旧 APK 并记录当前配置后覆盖安装。
 6. 真机检查冷启动、Home 返回、壁纸与应用顺序、农历显示、控制中心、手机设置页和屏保播放/退出；涉及开机路径变更时另做整机重启验证。
 7. 验证通过后合并回 `mitv-custom` 并推送，更新本文基线和验证记录。
@@ -86,3 +87,12 @@ adb -s "$TV_SERIAL" shell am start -W -n com.thunderstone.idun.dev/app.orchard.t
 - 合并前的未提交改动另存于本机备份；除玻璃增强实现及其专属对照夹具外，其余改动保持未提交。控制中心浅色壁纸、导航及重开回归继续保留。
 - 本次只做本地验证，不安装电视；上游真机性能数据不代表本机已验收。
 - 本地验证：JDK 17 下 `assembleStandardRelease assembleGuardRelease testStandardReleaseUnitTest` 通过，两个 release 变体的 lintVital 通过；补充完整/流畅模式及主页空闲预热后的控制中心导航、关闭重开像素一致性回归后，再次运行全部 35 项测试，0 失败、0 错误、0 跳过。standard APK 包名、版本 56 / 1.48-mitv 和签名（`eff67c2c…9ae7c25`）核对通过。真实电视性能、启动和遥控器操作未验证。
+
+## 2026-10-25 真机覆盖安装
+
+- `8814793` 的 standard release 同包名、同签名覆盖安装成功，版本 `1.48-mitv / 56`；首次安装时间未变，未卸载或清空数据。
+- 原壁纸、首排顺序、大时钟、农历与天气显示保留，19 个磁贴加载；控制中心日期和有线网络分行显示正常。
+- 默认 HOME、无障碍、Dream 组件和停用包清单未改；从小米设置注入 HOME 后返回桌面。未做实体遥控器、重启、待机、视频屏保和手机页验收。
+- 已执行规定的 `speed` 编译命令；固件最终报告实际编译过滤器为 `speed-profile`，没有改写系统编译属性。
+- 面板底层模式为 3840×2160@60Hz，但系统 `config_maxUiWidth=1920`，DisplayManager、应用窗口和界面合成空间均为 1920×1080。本次未修改分辨率；系统是否允许原生 4K UI 尚待进一步验证。
+- 安装包备份、签名核对、截图和原始输出保存在本机 `local/artifacts/aerial-tv/upgrade-1.48/`。

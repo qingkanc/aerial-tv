@@ -13,7 +13,7 @@
   })();
 </script>
 <title>Aerial · 给国产电视的一块干净桌面</title>
-<meta name="description" content="参照 tvOS 设计的开源 Android TV 桌面。没有广告，没有推荐流，只有你的 App、你的壁纸和航拍屏保。支持小米、TCL 等国产电视，开机自动接管。">
+<meta name="description" content="参照 tvOS 设计的开源 Android TV 桌面。没有广告，没有推荐流，只有你的 App、你的壁纸和航拍屏保。支持小米、TCL、创维、索尼等国产电视和盒子，开机自动接管。">
 <meta property="og:title" content="Aerial · 给国产电视的一块干净桌面">
 <meta property="og:description" content="参照 tvOS 设计的开源电视桌面，没有广告，开机自动接管。">
 <meta property="og:image" content="img/home.jpg?v=147">
@@ -22,7 +22,7 @@
 <link rel="alternate" hreflang="en" href="https://aerial.qust.me/en/">
 <link rel="alternate" hreflang="x-default" href="https://aerial.qust.me/en/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -176,11 +176,15 @@
       </div>
     </div>
     <div class="devices reveal">
-      <span class="chip"><b>小米 / Redmi</b> · HyperOS TV</span>
-      <span class="chip"><b>TCL</b> · Android 11</span>
+      <span class="chip"><b>小米 / Redmi</b> · Android 6–14</span>
+      <span class="chip"><b>TCL</b> · Android 8–11</span>
+      <span class="chip"><b>创维 / 酷开</b> · Android 11</span>
       <span class="chip"><b>索尼 BRAVIA</b> · Android 10–12</span>
-      <a class="chip chip-link" href="https://github.com/pengchujin/aerial-tv/issues">其他品牌：欢迎<b>反馈</b> ›</a>
+      <span class="chip"><b>康佳</b> · Android 9</span>
+      <span class="chip"><b>盒子和投影仪</b> · 极米、大眼橙、极光盒子</span>
+      <a class="chip chip-link" href="https://github.com/pengchujin/aerial-tv#支持的机型">完整<b>机型列表</b> ›</a>
     </div>
+    <p class="note devices-note reveal">海信 / Vidda 和部分酷开开机会先进原桌面，雷鸟 MT9655 机型暂时接管不了。</p>
   </div>
 </section>
 
@@ -310,8 +314,8 @@
         <p>直接从 Apple 的服务器播放，1080p，码率约 15–20 Mbps。连不上时自动改用照片屏保。</p>
       </details>
       <details>
-        <summary>我的电视不在列表里，能用吗？</summary>
-        <p>大概率可以，原生 Android TV / Google TV 最省事。LG webOS、三星 Tizen、华为鸿蒙智慧屏的系统不一样，装不了；Android 4.4 及更老的电视也不行（Aerial 最低要 Android 5.0）。极米 H3、老乐视、荣耀智慧屏、老康佳（看不到版本号）等机型打不开 ADB，暂时没有办法。遇到问题请用 <a href="https://github.com/pengchujin/aerial-tv/issues/new?template=device.yml">机型适配模板</a> 告诉我们，附上诊断信息：电脑上运行 <code>curl -fsSL https://aerial.qust.me/tools/report.sh | TV=&lt;电视IP&gt; bash</code>，或在手机配置页「更多 → 反馈问题」里复制。</p>
+        <summary>我的电视能用吗？</summary>
+        <p>先看<a href="https://github.com/pengchujin/aerial-tv#支持的机型">机型列表</a>。不在列表里的大概率也可以，原生 Android TV / Google TV 最省事。LG webOS、三星 Tizen、华为鸿蒙智慧屏的系统不一样，装不了；Android 4.4 及更老的电视也不行（Aerial 最低要 Android 5.0）。极米 H3、老乐视、荣耀智慧屏、老康佳（看不到版本号）等机型打不开 ADB，暂时没有办法。老电视或内存小的电视会自动用「流畅」效果，也可以在 个性化 → 效果 里手动选。遇到问题请用 <a href="https://github.com/pengchujin/aerial-tv/issues/new?template=device.yml">机型适配模板</a> 告诉我们，附上诊断信息：电脑上运行 <code>curl -fsSL https://aerial.qust.me/tools/report.sh | TV=&lt;电视IP&gt; bash</code>，或在手机配置页「更多 → 反馈问题」里复制。</p>
       </details>
     </div>
   </div>

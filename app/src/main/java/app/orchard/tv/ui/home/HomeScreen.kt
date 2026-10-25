@@ -89,7 +89,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
@@ -196,20 +195,15 @@ fun HomeScreen(
     val reduced = LocalReducedMotion.current
     val density = LocalDensity.current
     val now by rememberNow()
-    // The small Home clock has no date. Prepare its Chinese calendar in the background so the
-    // first Control Center opening does not initialize the calendar library on the UI thread.
-    val today = now.toLocalDate()
-    val prepareLunar = !AerialSettings.largeClock && Locale.getDefault().language == "zh"
-    LaunchedEffect(today, prepareLunar) {
-        if (prepareLunar) withContext(Dispatchers.Default) { lunarDateText(today) }
-    }
     val scope = rememberCoroutineScope()
 
     val requesters = remember { HashMap<String, FocusRequester>() }
     fun requester(key: String) = requesters.getOrPut(key) { FocusRequester() }
     val pillRequester = remember { FocusRequester() }
     val appContext = LocalContext.current
-    val firmwareInputPanel = remember { SystemProbe.tclInputPanel(appContext) != null }
+    val firmwareInputPanel = remember {
+        SystemProbe.tclInputPanel(appContext) != null || SystemProbe.coocaaInputPanel(appContext)
+    }
 
     var focusedKey by remember { mutableStateOf<String?>(null) }
     // Where focus goes when the overlay closes, when that is not the tile it was on. Kept apart
@@ -512,11 +506,14 @@ fun HomeScreen(
                     (metrics.topRowY + metrics.tileH + PlatePadV + metrics.firstGap).toPx(),
                 )
             }
-            // The aerial wallpaper's film, under everything; it moves only on a still top row.
-            if (Wallpapers.selectedId == Wallpapers.LIVE) {
-                LiveWallpaper(
-                    moving = vm.resumed && overlay == Overlay.None && !vm.screensaverVisible && !pastShelf &&
-                        focusedRow == 0 && moving == null,
+            // A moving wallpaper's film, under everything; it moves only on the top row with
+            // nothing over it, and there only once Home is still unless set to keep moving.
+            val filmMoves = vm.resumed && overlay == Overlay.None && !vm.screensaverVisible && !pastShelf &&
+                focusedRow == 0 && moving == null
+            val sourceInput = Wallpapers.sourceInput
+            when {
+                Wallpapers.selectedId == Wallpapers.LIVE -> LiveWallpaper(
+                    moving = filmMoves,
                     keep = vm.resumed && (!vm.screensaverVisible || filmSaver),
                     lastInputAt = vm.lastInputAt,
                     cover = filmCover,
@@ -524,7 +521,16 @@ fun HomeScreen(
                     standIn = overlay == Overlay.None,
                     live = liveFilm,
                 )
+                Wallpapers.selectedId == Wallpapers.VIDEOS -> VideoWallpaper(
+                    moving = filmMoves,
+                    keep = vm.resumed && !vm.screensaverVisible,
+                    lastInputAt = vm.lastInputAt,
+                    cover = filmCover,
+                )
+                sourceInput != null -> SourceWallpaper(sourceInput, show = vm.resumed && !vm.screensaverVisible, cover = filmCover)
             }
+            // Another wallpaper chosen: nothing shows through until the new one has a frame.
+            LaunchedEffect(Wallpapers.selectedId) { filmCover.snapTo(0f) }
             HomeBackground(
                 // The chosen wallpaper; in "Follow App" mode, light from the focused app.
                 backdrop = Wallpapers.backdrop ?: ambientApp?.art?.backdrop,
@@ -533,6 +539,10 @@ fun HomeScreen(
                 scroll = { scroll.value },
                 collapse = collapsePx,
                 cover = { filmCover.value },
+                // A film kept moving, or an input's picture, gets the shade a picture has, so the
+                // top row reads over it without the plate. In the grid both give way to the
+                // frosted picture, as any wallpaper does (an input's picture cannot be blurred).
+                shadeMoving = AerialSettings.wallpaperAlwaysMoves || sourceInput != null,
                 filmStopped = { filmStopped },
                 toSaver = { toSaver.value },
                 saverImage = saverImage,
@@ -568,6 +578,7 @@ fun HomeScreen(
                             .padding(top = metrics.clockY)
                             .graphicsLayer { alpha = 1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f) },
                         toSaver = { toSaver.value },
+                        saving = vm.screensaverVisible,
                     )
                 } else if (!clockRight) {
                     CornerClock(
@@ -576,6 +587,7 @@ fun HomeScreen(
                             .padding(start = metrics.margin, top = 28.dp)
                             .graphicsLayer { alpha = 1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f) },
                         toSaver = { toSaver.value },
+                        saving = vm.screensaverVisible,
                     )
                 }
 
@@ -689,6 +701,7 @@ fun HomeScreen(
                         .padding(end = 14.dp)
                         .graphicsLayer { alpha = 1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f) },
                     toSaver = { toSaver.value },
+                    saving = vm.screensaverVisible,
                 )
             }
             StatusPill(

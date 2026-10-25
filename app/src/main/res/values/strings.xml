@@ -221,5 +221,15 @@
     <string name="ss_videos_hint">Add MP4 or MOV films from the phone page. Plays offline; photos are shown when no film can play.</string>
     <string name="ss_system">System</string>
     <string name="ss_system_hint">The TV\'s own screensaver, as it came with the TV (Xiaomi\'s pictures, for one). Aerial shows none of its own.</string>
-    <string name="lunar_calendar_date">农历%1$s</string>
+    <string name="wp_videos_note">Your own videos, sent from the phone, silent and one after another. They move like the aerial films and stop on the frame showing.</string>
+    <string name="wp_source_note">This input\'s live picture behind Home, without sound; open the input for sound. Going down to the apps, it gives way to a frosted background. A dark picture shows while the input has nothing to show.</string>
+    <string name="st_play">Playing</string>
+    <string name="st_play_still">When still</string>
+    <string name="st_play_always">Always</string>
+    <string name="st_play_hint">When still: after 10 seconds on the top row; a key stops it. Always: keys do not stop it, and it is shaded a little; it stops when you go down to the apps.</string>
+    <string name="ss_show_time">Time</string>
+    <string name="ss_show_time_hint">The time over the aerial and photo screensavers. The time and place name move a little now and then, so nothing stays on the same pixels.</string>
+    <string name="input_antenna">Antenna</string>
+    <string name="input_digital">Digital TV</string>
+    <string name="st_on">On</string>
 </resources>

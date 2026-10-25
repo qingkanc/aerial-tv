@@ -7,7 +7,7 @@
 **A calm home screen for Android TV.**
 
 A home screen modeled on Apple TV, with no ads and no recommendation feeds: just your apps, your wallpaper and aerial screensavers.<br>
-Made for the Xiaomi, TCL and other TVs sold in China. It starts at boot and survives standby.
+Made for Xiaomi, TCL, Skyworth, Sony and other TVs sold in China, and runs on boxes and projectors too. It starts at boot and survives standby.
 
 [中文](README.md) · **English**
 
@@ -132,35 +132,50 @@ Run the commands yourself on my computer, and at the end paste the raw output of
 
 ### Troubleshooting
 
+- **Will it work on my TV?** See [Supported TVs](#supported-tvs) below.
+
 - **Installed only the APK from a USB stick**: from 1.32 Aerial has an icon in the TV's app list and, when opened, shows how to make it the Home screen. With the APK alone, Home, power-on and wake still go to the old launcher; run the command above or hand it to an agent once more (it installs over, settings stay).
 - **TCL shows a 多屏互动 prompt**: press Right, then OK, to choose 同意 (Agree).
 - **Skyworth: `adb install` fails with `INSTALL_FAILED_USER_RESTRICTED`**: run `adb shell settings put global verifier_verify_adb_installs 0`, then install again (from a user's report; see the [agent guide](site/en/agent.md#common-cases)).
 - **The firmware won't install home-screen apps**: add `-s guard` to the end of the command, or use [aerial-guard.apk](https://aerial.qust.me/download/aerial-guard.apk).
 - **What `KEEP_ADB=1` does**: Xiaomi turns ADB off after standby; with it, Aerial turns it back on so you can update later.
 - **Do my apps, subscriptions, Xiaoai, account and cable TV stay?** Yes. Aerial only replaces the home screen. The old home screen is in the app list (Xiaomi Video and PatchWall open from the 桌面 tile), and Xiaoai, the Xiaomi account and cable TV work as before. A boot ad comes from the firmware and stays.
-- **Not supported**: LG webOS, Samsung Tizen, Huawei Vision (HarmonyOS), and Android 4.4 or older. TVs that cannot open ADB, such as XGIMI H3, old LeTV sets, Honor Vision and old Konka models (no version number to tap), can't be used yet.
 
 ## How it stays your home screen
 
-Most TVs sold in China only accept their own home screen and clear third-party apps in standby. So Aerial uses an accessibility service to switch back whenever the stock home screen appears (it only looks at which window is in front, never at what's on screen), and a notification listener to get the system to restart it after a kill (it reads no notifications). Stock Android TV needs none of this: Aerial is simply the default home screen.
+Most TVs sold in China only accept their own home screen and clear third-party apps in standby. So Aerial uses an accessibility service to switch back whenever the stock home screen appears (it only looks at which window is in front, never at what's on screen), and a notification listener to get the system to restart it after a kill (it reads no notifications). Old Xiaomi sets on Android 6 report no window changes from their home screen, so there the guard reads the system's usage stats; it also knows the home screens some Coocaa and Skyworth firmware start in their own way. Stock Android TV needs none of this: Aerial is simply the default home screen.
 
-## Tested TVs
+## Supported TVs
 
-| Model | System | Status |
-|---|---|---|
-| Xiaomi MiTV-MFTR0 / Redmi X65 2026 | Android 14 | In daily use ([notes](docs/devices/xiaomi-mitv-mftr0.md)) |
-| Xiaomi MiTV-MFFU0 | Android 14 | Install and boot ([notes](docs/devices/xiaomi-mitv-mffu0.md)) |
-| Xiaomi MiTV-ASTP0 / NSOP0 | Android 9 | User-verified ([#48](https://github.com/pengchujin/aerial-tv/issues/48), [#65](https://github.com/pengchujin/aerial-tv/issues/65)) |
-| Xiaomi MiTV-MFTP0 | Android 9 | Install and boot; the guard drops after an update ([#72](https://github.com/pengchujin/aerial-tv/issues/72)) |
-| TCL MT5879 (China) | Android 11 | In daily use ([notes](docs/devices/tcl-mt5879-cn.md)) |
-| Sony A80J (China) / BRAVIA VH1 | Android 10 / 12 | User-verified ([#16](https://github.com/pengchujin/aerial-tv/issues/16), [#2](https://github.com/pengchujin/aerial-tv/issues/2)) |
-| Skyworth Coocaa K3 Pro | Android 11 | User-verified ([#43](https://github.com/pengchujin/aerial-tv/issues/43)) |
-| Konka KKTV U86V9 | Android 9 | User-verified: Home, start at boot, inputs; brightness does not work ([notes](docs/devices/konka-kktv-u86v9.md), Chinese) |
-| OPPO K9 | Android 9 | Needs a renamed package ([notes](docs/devices/oppo-coloros-tv.md)) |
-| Konka 2861, PPTV K55U27, XGIMI m7642, Tencent Aurora box 7S | Android 5–9 | User-verified with small issues, see [Issues](https://github.com/pengchujin/aerial-tv/issues) |
-| FFALCON 55S595C Ultra | Android 11 | Installs, but can't take over Home ([#52](https://github.com/pengchujin/aerial-tv/issues/52)) |
+✅ works　⚠️ works with limits　❌ can't take over yet. Mostly from user reports; the linked notes (Chinese) have details.
 
-Installs but doesn't start at boot: Vidda, Hisense, FFALCON Crane 6 2025 Ultra. If yours works, or doesn't, tell us with the [device support form](https://github.com/pengchujin/aerial-tv/issues/new?template=device.yml) and its diagnostics: run `curl -fsSL https://aerial.qust.me/tools/report.sh | TV=<tv-ip> bash` on a computer (it only reads), or copy them from More → Report a Problem on the phone page. They hold no accounts, addresses, Wi-Fi names or app lists.
+| Brand | Models | System | Status |
+|---|---|---|---|
+| Xiaomi / Redmi | MiTV-MFTR0 (Redmi X65 2026), MFFU0, MTSU0 (S65 Mini LED 2026) | Android 14 | ✅ In daily use ([MFTR0](docs/devices/xiaomi-mitv-mftr0.md), [MFFU0](docs/devices/xiaomi-mitv-mffu0.md), [MTSU0](docs/devices/xiaomi-mitv-mtsu0.md)) |
+| Xiaomi | MiTV-ASTP0, NSOP0, MFTP0 | Android 9 | ✅ MFTP0 takes 30–60 s to come back after the system clears it ([notes](docs/devices/xiaomi-mitv-mftp0.md)) |
+| Xiaomi | Mi TV 4 / 4A / 4X / 3S, Mi Box 4 | Android 6 | ✅ From 1.43; Home takes a few seconds to return to Aerial ([notes](docs/devices/xiaomi-android6.md)) |
+| Xiaomi (Fengmi) | Ultraman series projector | Android 9 | ✅ ([notes](docs/devices/xiaomi-ultraman-projector.md)) |
+| TCL | MT5879 (China) | Android 11 | ✅ In daily use ([notes](docs/devices/tcl-mt5879-cn.md)) |
+| TCL | 75V2 (m7221) | Android 8 | ✅ Starts straight into Aerial, no root ([notes](docs/devices/tcl-m7221-cn.md)) |
+| FFALCON | 55S595C Ultra, Crane 6 2025 Ultra | Android 11+ | ❌ Installs, can't take over Home ([notes](docs/devices/tcl-mt9655-cn.md)) |
+| Sony | A80J (China), BRAVIA VH1 | Android 10 / 12 | ✅ |
+| Skyworth / Coocaa | K3 Pro, 75A7D | Android 11 | ✅ 75A7D inputs work from 1.45 |
+| Skyworth / Coocaa | 65G60, 8R134 / 8R145, aigc models (C10 projector, P60, 7T863) | Android 8–11 | ⚠️ Boots into Coocaa's home first, or takes 20–30 s to come back after the system clears it ([notes](docs/devices/skyworth-coocaa.md)) |
+| Skyworth | 7T641, 75A6E | Android 13 | ❌ Black screen or freeze |
+| Panasonic | TH-55HX560C (built by Skyworth) | Android 8 | ⚠️ No inputs listed |
+| Konka | KKTV U86V9, 2861 | Android 9 | ✅ U86V9 brightness does not work ([notes](docs/devices/konka-kktv-u86v9.md)) |
+| Hisense / Vidda | VIDAA models | Android 5–14 | ⚠️ Home works, most boot into Hisense's home first; VIDAA C1 projector can't be taken over ([notes](docs/devices/hisense-vidaa.md)) |
+| OPPO | K9 | Android 9 | ⚠️ Needs a renamed package ([notes](docs/devices/oppo-coloros-tv.md)) |
+| XGIMI | Z7X, m7642 | Android 9 | ✅ Z7X needs a third-party tool to open ADB ([notes](docs/devices/xgimi-z7x.md)) |
+| OBE | X7 projector | Android 9 | ✅ Home inside HDMI can go to the Apple TV's home screen ([notes](docs/devices/obe-x7.md)) |
+| Tencent Aurora box | 6 / 6SE / 7S | Android 10 / 14 | ✅ 6 works; ⚠️ 7S stays on the stock home at boot ([notes](docs/devices/tencent-aurora-box.md)) |
+| Other boxes | CM311-1 (modified ATV), PPTV K55U27 | Android 9 | ✅ |
+
+- **Not supported**: LG webOS, Samsung Tizen, Huawei Vision (HarmonyOS), and Android 4.4 or older.
+- **Can't open ADB**: XGIMI H3, old LeTV sets, Honor Vision, old Konka models (no version number to tap).
+- **Slow or low-memory TVs**: from 1.48 Aerial picks Lite effects on its own (solid panels, no highlights); you can also choose it in Personalize → Effects.
+
+If yours works, or doesn't, tell us with the [device support form](https://github.com/pengchujin/aerial-tv/issues/new?template=device.yml) and its diagnostics: run `curl -fsSL https://aerial.qust.me/tools/report.sh | TV=<tv-ip> bash` on a computer (it only reads), or copy them from More → Report a Problem on the phone page. They hold no accounts, addresses, Wi-Fi names or app lists.
 
 ## Development
 
