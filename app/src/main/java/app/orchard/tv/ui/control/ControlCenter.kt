@@ -206,10 +206,10 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
 
     Column {
         Row(verticalAlignment = Alignment.Bottom) {
-            Column(Modifier.weight(1f)) {
-                BasicText(timeText(now), style = Type.SmallClock.copy(fontSize = Type.LargeTitle.fontSize * 1.05f))
-                BasicText(dateText(now), style = Type.Callout)
-            }
+            BasicText(
+                timeText(now), style = Type.SmallClock.copy(fontSize = Type.LargeTitle.fontSize * 1.05f),
+                modifier = Modifier.weight(1f),
+            )
             val net = vm.network
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 GlyphIcon(
@@ -227,6 +227,9 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
                 )
             }
         }
+
+        // Keep the full calendar below the clock/network row: a long SSID must not narrow it.
+        BasicText(dateText(now), style = Type.Callout, modifier = Modifier.fillMaxWidth())
 
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

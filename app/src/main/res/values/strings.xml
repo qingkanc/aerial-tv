@@ -4,15 +4,10 @@
     <string name="guard_name">Aerial Home Guard</string>
     <string name="guard_description">Keeps Aerial as your home screen on TVs that do not let you change it. Reads no screen content.</string>
 
-    <string name="greeting_morning">Good morning</string>
-    <string name="greeting_afternoon">Good afternoon</string>
-    <string name="greeting_evening">Good evening</string>
 
-    <string name="cc_title">Control Center</string>
     <string name="cc_inputs">Inputs</string>
     <string name="cc_network">Network</string>
     <string name="cc_settings">Settings</string>
-    <string name="cc_volume">Volume</string>
     <string name="cc_muted">Muted</string>
     <string name="cc_home_default">Aerial is your home screen</string>
     <string name="cc_home_guarded">Home Guard is on</string>
@@ -26,7 +21,6 @@
     <string name="cc_setup_revival_where">Notification access</string>
     <string name="cc_setup_scan">Or set it all up with a computer (recommended)</string>
     <string name="cc_setup_scan_hint">Scan with your phone for this TV\'s command and a prompt for an AI agent.</string>
-    <string name="cc_back">Back</string>
     <string name="cc_no_inputs">No inputs found on this TV</string>
 
     <string name="net_ethernet">Ethernet</string>
@@ -35,8 +29,6 @@
 
     <string name="input_connected">Connected</string>
     <string name="input_live_tv">Live TV</string>
-    <string name="input_antenna">Antenna</string>
-    <string name="input_digital">Digital TV</string>
     <string name="input_av">AV</string>
 
     <string name="menu_move">Move</string>
@@ -45,7 +37,6 @@
     <string name="menu_out_of_folder">Move Out of Folder</string>
     <string name="menu_rename_folder">Rename</string>
     <string name="menu_ungroup">Remove Folder</string>
-    <string name="menu_back">Back</string>
     <string name="folder_default">Folder</string>
     <string-array name="folder_names">
         <item>System</item>
@@ -144,7 +135,6 @@
     <string name="st_sounds_tv_hint">The TV\'s own key sounds, as in its menus. Silent if key sounds are off in the TV\'s settings: choose Aerial then.</string>
     <string name="st_sounds_tv">TV</string>
     <string name="st_sounds_aerial">Aerial</string>
-    <string name="st_on">On</string>
     <string name="st_off">Off</string>
     <string name="st_hidden_apps">Hidden Apps</string>
     <string name="st_hidden_apps_hint">Apps hidden from Home are kept here, to put back. With a parental PIN set, it asks for the PIN first.</string>

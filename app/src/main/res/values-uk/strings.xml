@@ -2,14 +2,9 @@
 <resources>
     <string name="guard_name">Aerial Home Guard</string>
     <string name="guard_description">Залишає Aerial головним екраном на телевізорах, де його не можна змінити. Не читає вміст екрана.</string>
-    <string name="greeting_morning">Доброго ранку</string>
-    <string name="greeting_afternoon">Добрий день</string>
-    <string name="greeting_evening">Добрий вечір</string>
-    <string name="cc_title">Центр керування</string>
     <string name="cc_inputs">Джерела</string>
     <string name="cc_network">Мережа</string>
     <string name="cc_settings">Налаштування</string>
-    <string name="cc_volume">Гучність</string>
     <string name="cc_muted">Звук вимкнено</string>
     <string name="cc_home_default">Aerial — ваш головний екран</string>
     <string name="cc_home_guarded">Home Guard увімкнено</string>
@@ -23,15 +18,12 @@
     <string name="cc_setup_revival_where">Доступ до сповіщень</string>
     <string name="cc_setup_scan">Або налаштуйте все з комп’ютера (рекомендовано)</string>
     <string name="cc_setup_scan_hint">Відскануйте телефоном, щоб отримати команду для цього телевізора та підказку для ШІ-агента.</string>
-    <string name="cc_back">Назад</string>
     <string name="cc_no_inputs">На цьому телевізорі немає джерел сигналу</string>
     <string name="net_ethernet">Ethernet</string>
     <string name="net_wifi">Wi-Fi</string>
     <string name="net_offline">Немає з’єднання</string>
     <string name="input_connected">Підключено</string>
     <string name="input_live_tv">Ефірне ТБ</string>
-    <string name="input_antenna">Антена</string>
-    <string name="input_digital">Цифрове ТБ</string>
     <string name="input_av">AV</string>
     <string name="menu_move">Перемістити</string>
     <string name="menu_to_folder">Перемістити до папки</string>
@@ -39,7 +31,6 @@
     <string name="menu_out_of_folder">Прибрати з папки</string>
     <string name="menu_rename_folder">Перейменувати</string>
     <string name="menu_ungroup">Видалити папку</string>
-    <string name="menu_back">Назад</string>
     <string name="folder_default">Папка</string>
     <string-array name="folder_names">
         <item>Система</item>
@@ -136,7 +127,6 @@
     <string name="st_sounds_tv_hint">Власні звуки клавіш телевізора, як у його меню. Якщо їх вимкнено в налаштуваннях телевізора, звуку не буде: тоді виберіть Aerial.</string>
     <string name="st_sounds_tv">ТВ</string>
     <string name="st_sounds_aerial">Aerial</string>
-    <string name="st_on">Увімк.</string>
     <string name="st_off">Вимк.</string>
     <string name="st_hidden_apps">Приховані застосунки</string>
     <string name="st_hidden_apps_hint">Застосунки, приховані з головного екрана, зберігаються тут, щоб їх можна було повернути. Якщо задано батьківський PIN-код, спочатку його буде запитано.</string>

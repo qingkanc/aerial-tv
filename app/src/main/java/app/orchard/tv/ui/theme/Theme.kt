@@ -24,7 +24,6 @@ fun canvasDensity(metrics: android.util.DisplayMetrics): Float =
 
 /** tvOS dark appearance. Values follow Apple's system colors for the dark, elevated context. */
 object Palette {
-    val Background = Color(0xFF000000)
     val Label = Color(0xFFFFFFFF)
     val SecondaryLabel = Color(0x99EBEBF5)
     val TertiaryLabel = Color(0x4DEBEBF5)

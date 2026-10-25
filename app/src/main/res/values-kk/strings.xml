@@ -2,14 +2,9 @@
 <resources>
     <string name="guard_name">Aerial Home Guard</string>
     <string name="guard_description">Басты экранды өзгертуге болмайтын теледидарларда Aerial-ді басты экран ретінде сақтайды. Экран мазмұнын оқымайды.</string>
-    <string name="greeting_morning">Қайырлы таң</string>
-    <string name="greeting_afternoon">Қайырлы күн</string>
-    <string name="greeting_evening">Қайырлы кеш</string>
-    <string name="cc_title">Басқару орталығы</string>
     <string name="cc_inputs">Көздер</string>
     <string name="cc_network">Желі</string>
     <string name="cc_settings">Параметрлер</string>
-    <string name="cc_volume">Дыбыс деңгейі</string>
     <string name="cc_muted">Дыбыс өшірулі</string>
     <string name="cc_home_default">Aerial — сіздің басты экраныңыз</string>
     <string name="cc_home_guarded">Home Guard қосулы</string>
@@ -23,15 +18,12 @@
     <string name="cc_setup_revival_where">Хабарландыруларға қолжетімділік</string>
     <string name="cc_setup_scan">Немесе бәрін компьютерден баптаңыз (ұсынылады)</string>
     <string name="cc_setup_scan_hint">Осы теледидарға арналған пәрмен мен жасанды интеллект агентіне арналған нұсқауды алу үшін телефонмен сканерлеңіз.</string>
-    <string name="cc_back">Артқа</string>
     <string name="cc_no_inputs">Бұл теледидарда сигнал көздері табылмады</string>
     <string name="net_ethernet">Ethernet</string>
     <string name="net_wifi">Wi-Fi</string>
     <string name="net_offline">Қосылмаған</string>
     <string name="input_connected">Қосылған</string>
     <string name="input_live_tv">Эфирлік ТД</string>
-    <string name="input_antenna">Антенна</string>
-    <string name="input_digital">Сандық ТД</string>
     <string name="input_av">AV</string>
     <string name="menu_move">Жылжыту</string>
     <string name="menu_to_folder">Қалтаға жылжыту</string>
@@ -39,7 +31,6 @@
     <string name="menu_out_of_folder">Қалтадан шығару</string>
     <string name="menu_rename_folder">Атын өзгерту</string>
     <string name="menu_ungroup">Қалтаны жою</string>
-    <string name="menu_back">Артқа</string>
     <string name="folder_default">Қалта</string>
     <string-array name="folder_names">
         <item>Жүйе</item>
@@ -136,7 +127,6 @@
     <string name="st_sounds_tv_hint">Теледидардың өз түйме дыбыстары, мәзірлеріндегідей. Теледидар параметрлерінде өшірулі болса, дыбыс болмайды: онда Aerial таңдаңыз.</string>
     <string name="st_sounds_tv">ТД</string>
     <string name="st_sounds_aerial">Aerial</string>
-    <string name="st_on">Қосулы</string>
     <string name="st_off">Өшірулі</string>
     <string name="st_hidden_apps">Жасырын қолданбалар</string>
     <string name="st_hidden_apps_hint">Басты экраннан жасырылған қолданбалар қайтару үшін осында сақталады. Ата-аналық PIN-код орнатылған болса, алдымен сол сұралады.</string>

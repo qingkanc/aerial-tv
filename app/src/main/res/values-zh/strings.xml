@@ -3,15 +3,10 @@
     <string name="guard_name">Aerial 桌面守护</string>
     <string name="guard_description">在不允许更换桌面的电视上，让 Aerial 保持为主屏幕。不会读取任何屏幕内容。</string>
 
-    <string name="greeting_morning">早上好</string>
-    <string name="greeting_afternoon">下午好</string>
-    <string name="greeting_evening">晚上好</string>
 
-    <string name="cc_title">控制中心</string>
     <string name="cc_inputs">信号源</string>
     <string name="cc_network">网络</string>
     <string name="cc_settings">设置</string>
-    <string name="cc_volume">音量</string>
     <string name="cc_muted">已静音</string>
     <string name="cc_home_default">Aerial 是默认桌面</string>
     <string name="cc_home_guarded">桌面守护已开启</string>
@@ -25,7 +20,6 @@
     <string name="cc_setup_revival_where">通知使用权</string>
     <string name="cc_setup_scan">或者用电脑一次设好（推荐）</string>
     <string name="cc_setup_scan_hint">手机扫码，拿到这台电视的命令和给 Agent 的提示词。</string>
-    <string name="cc_back">返回</string>
     <string name="cc_no_inputs">这台电视没有可用的信号源</string>
 
     <string name="net_ethernet">有线网络</string>
@@ -34,8 +28,6 @@
 
     <string name="input_connected">已连接</string>
     <string name="input_live_tv">电视直播</string>
-    <string name="input_antenna">模拟电视</string>
-    <string name="input_digital">数字电视</string>
     <string name="input_av">AV</string>
 
     <string name="menu_move">移动</string>
@@ -44,7 +36,6 @@
     <string name="menu_out_of_folder">移出文件夹</string>
     <string name="menu_rename_folder">重命名</string>
     <string name="menu_ungroup">解散文件夹</string>
-    <string name="menu_back">返回</string>
     <string name="folder_default">文件夹</string>
     <string-array name="folder_names">
         <item>系统应用</item>
@@ -143,7 +134,6 @@
     <string name="st_sounds_tv_hint">用电视系统自带的按键音，和电视菜单里一样。电视设置里关了按键音时不会响，这时请选「Aerial」。</string>
     <string name="st_sounds_tv">电视</string>
     <string name="st_sounds_aerial">Aerial</string>
-    <string name="st_on">开</string>
     <string name="st_off">关</string>
     <string name="st_hidden_apps">隐藏的 App</string>
     <string name="st_hidden_apps_hint">从主屏幕隐藏的 App 在这里，可以放回主屏幕。设了家长密码时要先输入密码。</string>

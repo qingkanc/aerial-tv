@@ -40,7 +40,7 @@ object TileDiskCache {
     }
 
     fun key(stamp: Long): String =
-        "$stamp|${TileArtFactory.W}|${TileArtFactory.unified}|${Locale.getDefault().toLanguageTag()}|${BuildConfig.VERSION_CODE}"
+        "$stamp|${TileArtFactory.W}|true|${Locale.getDefault().toLanguageTag()}|${BuildConfig.VERSION_CODE}"
 
     private fun file(pkg: String) = File(dir, "$pkg.tile")
 

@@ -90,12 +90,6 @@ object TileArtFactory {
         H = W * 9 / 16
     }
 
-    /**
-     * Icons drawn in Aerial's one look ([unify]) rather than in their own colors. Banners are
-     * the app's own art for TV and are left as they are.
-     */
-    @Volatile var unified = true
-
     /** How large a logo is, as the side of the square of the same area, in tile heights. */
     private const val LOGO = 0.5f
 
@@ -307,7 +301,7 @@ object TileArtFactory {
         if (bgPx != null && !isFlat(bgPx)) return null
         val (fore, at) = placeLogo(icon.foreground, ::visible) ?: return null
         val color = bgPx?.get(bgPx.size / 2)?.takeIf { it ushr 24 > 200 } ?: GRAPHITE_BOTTOM
-        if (unified && !multiColor(fore, at, color)) return unify(fore, at, color, color)
+        if (!multiColor(fore, at, color)) return unify(fore, at, color, color)
         val back = layer {
             drawColor(GRAPHITE_BOTTOM)
             bg?.let {
@@ -372,10 +366,10 @@ object TileArtFactory {
         val (fore, logo) = placeLogo(icon, ::logoOnPlate) ?: return null
         if (recipe?.top != null && recipe.bottom != null) {
             // The tile gets the recipe's colors, so the plate has to go: only the logo is kept.
-            cutOut(fore, logo, top, bottom, white = recipe.white || unified)
+            cutOut(fore, logo, top, bottom, white = true)
             return finish(colorTile(recipe.top, recipe.bottom), fore)
         }
-        if (unified && recipe?.keepColors != true && (recipe?.white == true || !multiColor(fore, logo, ColorUtils.blendARGB(top, bottom, 0.5f)))) {
+        if (recipe?.keepColors != true && (recipe?.white == true || !multiColor(fore, logo, ColorUtils.blendARGB(top, bottom, 0.5f)))) {
             return unify(fore, logo, top, bottom)
         }
         val back = layer {
@@ -430,7 +424,7 @@ object TileArtFactory {
         }
         // A logo with no plate of its own (the icon is just its shape) goes on in white like the
         // rest; a full-square icon is a picture, and stays one.
-        if (unified && !square && recipe?.keepColors != true) {
+        if (!square && recipe?.keepColors != true) {
             placeLogo(icon, ::visible)?.let { (fore, at) ->
                 if (recipe?.white == true || !multiColor(fore, at, 0)) {
                     whiten(fore)

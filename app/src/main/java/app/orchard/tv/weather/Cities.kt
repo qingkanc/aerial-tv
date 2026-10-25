@@ -10,7 +10,7 @@ import kotlin.math.sqrt
  * and 安庆 found a village in Jiangsu instead of the city in Anhui (issue #187).
  */
 object Cities {
-    class City(val name: String, val aliases: List<String>, val province: String, val lat: Double, val lon: Double, val rank: Int, val ascii: String)
+    class City(val name: String, val aliases: List<String>, val province: String, val lat: Double, val lon: Double, val ascii: String)
 
     private var all: List<City>? = null
 
@@ -19,7 +19,7 @@ object Cities {
         all ?: context.assets.open("cities-cn.tsv").bufferedReader().useLines { lines ->
             lines.filter { !it.startsWith("#") && it.isNotBlank() }.map { line ->
                 val c = line.split('\t')
-                City(c[0], c[1].split(',').filter { it.isNotEmpty() }, c[2], c[3].toDouble(), c[4].toDouble(), c[5].toInt(), c[6])
+                City(c[0], c[1].split(',').filter { it.isNotEmpty() }, c[2], c[3].toDouble(), c[4].toDouble(), c[6])
             }.toList()
         }.also { all = it }
     }
